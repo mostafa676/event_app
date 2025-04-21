@@ -15,4 +15,13 @@ class Service extends Model
     {
         return $this->hasMany(BookingServiceDetail::class);
     }
+    public function halls()
+{
+    return $this->belongsToMany(Hall::class, 'hall_service');
+}
+public function variants()
+{
+    return $this->hasMany(ServiceVariant::class);
+}
+
 }
