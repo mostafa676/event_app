@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('services', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // كرسي، طاولة، مصور ...
+            $table->string('name_ar');
+            $table->string('name_en'); // كرسي، طاولة، مصور ...
             $table->decimal('price_per_unit', 10, 2); // سعر الوحدة
             $table->timestamps();
 });

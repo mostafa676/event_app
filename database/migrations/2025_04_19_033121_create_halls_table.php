@@ -13,8 +13,10 @@ return new class extends Migration
     {
         Schema::create('halls', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('location');
+            $table->string('name_ar');
+            $table->string('name_en');
+            $table->string('location_ar');
+            $table->string('location_en');
             $table->integer('capacity');
             $table->decimal('price', 10, 2);
             $table->foreignId('event_type_id')->constrained()->onDelete('cascade');
