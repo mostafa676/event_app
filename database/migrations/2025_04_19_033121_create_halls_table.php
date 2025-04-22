@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('location_en');
             $table->integer('capacity');
             $table->decimal('price', 10, 2);
+            $table->string('image')->nullable();
             $table->foreignId('event_type_id')->constrained()->onDelete('cascade');
             $table->timestamps();
 });

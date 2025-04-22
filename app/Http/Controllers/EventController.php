@@ -14,11 +14,11 @@ class EventController extends Controller
         $eventTypes = EventType::all();
         if (!$eventTypes){
             return response()->json([
-                'message' => 'event retrieved successfully',
+                'message' => 'error',
             ], 200);
         }
         return response()->json([
-            'message' => 'error',
+            'message' => 'event retrieved successfully',
             'stores' => $eventTypes,
         ], 200);
     }
@@ -30,11 +30,11 @@ class EventController extends Controller
                      ->get();
                      if (!$halls){
                         return response()->json([
-                            'message' => 'hall retrieved successfully',
+                            'message' => 'error',
                         ], 200);
                     }
                     return response()->json([
-                        'message' => 'error',
+                        'message' => 'hall retrieved successfully',
                         'stores' => $halls,
                     ], 200);
     }
@@ -46,11 +46,11 @@ class EventController extends Controller
         }])->findOrFail($hallId);
                 if (!$hall){
                         return response()->json([
-                            'message' => 'hall services retrieved successfully',
+                            'message' => 'error',
                         ], 200);
                     }
                     return response()->json([
-                        'message' => 'error',
+                        'message' => 'hall services retrieved successfully',
                         'stores' => $hall->services,
                     ], 200);
         

@@ -11,15 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('booking_service_details', function (Blueprint $table) {
+        Schema::create('service_variants', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('booking_id')->constrained()->onDelete('cascade');
             $table->foreignId('service_id')->constrained()->onDelete('cascade');
-            $table->integer('quantity');
-            $table->decimal('total_price', 10, 2);
+            $table->string('name_ar');
+            $table->string('name_en');
+            $table->string('color')->nullable();
+            $table->decimal('price', 10, 2);
+            $table->string('image')->nullable();
             $table->timestamps();
-        });
-        
+        });        
     }
 
     /**
@@ -27,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('booking_service_details');
+        Schema::dropIfExists('service_variants');
     }
 };

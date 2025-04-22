@@ -10,7 +10,7 @@ class BookingServiceDetail extends Model
     use HasFactory;
 
     protected $fillable = [
-        'booking_id', 'service_id',
+    'booking_id', 'variant_id',
         'quantity', 'total_price'
     ];
 
@@ -23,4 +23,10 @@ class BookingServiceDetail extends Model
     {
         return $this->belongsTo(Service::class);
     }
+
+    public function serviceVariant()
+{
+    return $this->belongsTo(ServiceVariant::class, 'variant_id');
+}
+
 }
