@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User ;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -13,7 +14,7 @@ class UserController extends Controller
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'phone' => 'nullable|string|unique:users',
+            'phone' => 'required|digits:10|unique:users',
             'password' => 'required|string|min:8|confirmed',
         ]);
         $user = User::create([
@@ -64,5 +65,52 @@ class UserController extends Controller
             'message' => 'Logged out successfully'
         ], 200);
     }
+
+public function uploadImage(Request $request)
+{
+    $request->validate([
+        'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+    ]);
+    $user = auth()->user();
+    if ($user->image) {
+        Storage::delete('public/' . $user->image);
+    }
+    $path = $request->file('image')->store('user_images', 'public');
+    $user->update([
+        'image' => $path,
+    ]);
+    return response()->json([
+        'message' => 'تم تحديث الصورة بنجاح',
+        'image_url' => asset('storage/' . $path),
+    ]);
+}
+
+public function updateProfile(Request $request)
+{
+    $user = auth()->user();
+
+    $validated = $request->validate([
+        'name' => 'sometimes|string|max:255',
+        'email' => 'sometimes|email|unique:users,email,' . $user->id,
+        'phone' => 'sometimes|digits:10|unique:users,phone,' . $user->id,
+        'bio' => 'nullable|string|max:1000',
+    ]);
+
+    $user->update($validated);
+
+    return response()->json([
+        'message' => 'تم تحديث الملف الشخصي بنجاح',
+        'user' => $user,
+    ]);
+}
+
+public function profile()
+{
+    $user = auth()->user();
+
+    return response()->json([
+        'user' => $user
+    ]);
+}
 
 }

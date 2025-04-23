@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\SearchController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
@@ -33,3 +34,13 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::delete('/admin/delete-service/{name}', [AdminContentController::class, 'deleteServiceByName']);
     Route::delete('/admin/delete-service-variant/{name}', [AdminContentController::class, 'deleteServiceVariantByName']);
 });
+
+Route::middleware('auth:sanctum')->get('/user/search-history', [SearchController::class, 'searchHistory']);
+Route::middleware('auth:sanctum')->get('/search/Events', [SearchController::class, 'searchEvents']);
+Route::middleware('auth:sanctum')->get('/search/halls', [SearchController::class, 'searchHalls']);
+Route::middleware('auth:sanctum')->get('/search/services', [SearchController::class, 'searchServices']);
+
+
+Route::middleware('auth:sanctum')->post('/user/upload-image', [UserController::class, 'uploadImage']);
+Route::middleware('auth:sanctum')->put('/user/update-profile', [UserController::class, 'updateProfile']);
+Route::middleware('auth:sanctum')->get('/user/profile', [UserController::class, 'profile']);

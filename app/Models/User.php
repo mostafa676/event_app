@@ -22,9 +22,11 @@ class User extends Authenticatable
         'email',
         'password',
         'phone',
-        'is_admin'
+        'is_admin',
+        'image',
+        'bio',
     ];
-
+    
     /**
      * The attributes that should be hidden for serialization.
      *
@@ -43,4 +45,18 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+
+    protected $appends = ['image_url'];
+
+public function getImageUrlAttribute()
+{
+    return $this->image ? asset('storage/' . $this->image) : null;
+}
+
+public function searchHistories()
+{
+    return $this->hasMany(SearchHistory::class);
+}
+
 }
