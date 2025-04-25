@@ -1,14 +1,13 @@
 <?php
 
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\SearchController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AdminContentController;
-
-
 
 Route::post('/signup', [UserController::class, 'register']);
 Route::post('/login', [UserController::class, 'login']);
@@ -40,7 +39,16 @@ Route::middleware('auth:sanctum')->get('/search/Events', [SearchController::clas
 Route::middleware('auth:sanctum')->get('/search/halls', [SearchController::class, 'searchHalls']);
 Route::middleware('auth:sanctum')->get('/search/services', [SearchController::class, 'searchServices']);
 
-
 Route::middleware('auth:sanctum')->post('/user/upload-image', [UserController::class, 'uploadImage']);
 Route::middleware('auth:sanctum')->put('/user/update-profile', [UserController::class, 'updateProfile']);
 Route::middleware('auth:sanctum')->get('/user/profile', [UserController::class, 'profile']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/reservation/confirm', [ReservationController::class, 'confirmReservation']);
+    Route::get('/cart', [ReservationController::class, 'getCart']);
+    Route::post('/cart/event-type', [ReservationController::class, 'selectEventType']);
+    Route::post('/cart/hall', [ReservationController::class, 'selectHall']);
+    Route::post('/cart/add-service', [ReservationController::class, 'addService']);
+    Route::delete('/cart/remove-service/{id}', [ReservationController::class, 'removeService']);
+    Route::delete('/cart/clear', [ReservationController::class, 'clearCart']);
+});

@@ -16,11 +16,6 @@ class EventType extends Model
         return $this->hasMany(Hall::class);
     }
 
-    public function bookings()
-    {
-        return $this->hasMany(Booking::class);
-    }
-
     protected $appends = ['image_url'];
 
 public function getImageUrlAttribute()

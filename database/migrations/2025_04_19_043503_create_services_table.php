@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name_ar');
             $table->string('name_en'); // كرسي، طاولة، مصور ...
-            $table->decimal('price_per_unit', 10, 2); // سعر الوحدة
+            $table->decimal('avg_price', 10, 2); // متوسط السعر
             $table->string('image')->nullable();
             $table->timestamps();
 });

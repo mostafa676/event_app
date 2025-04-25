@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('name_ar');
             $table->string('name_en');
+            $table->decimal('price', 10, 2);
             $table->string('image')->nullable(); 
             $table->timestamps();
 });

@@ -11,12 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('booking_service_details', function (Blueprint $table) {
+        Schema::create('cart_service_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('booking_id')->constrained()->onDelete('cascade');
-            $table->foreignId('variant_id')->constrained('service_variants')->onDelete('cascade');
+            $table->foreignId('cart_id')->constrained()->onDelete('cascade');
+            $table->foreignId('service_id')->constrained()->onDelete('cascade');
+            $table->foreignId('service_variant_id')->constrained()->onDelete('cascade');
             $table->integer('quantity');
-            $table->decimal('total_price', 10, 2);
+            $table->decimal('unit_price', 10, 2);
             $table->timestamps();
         });
         
@@ -27,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('booking_service_details');
+        Schema::dropIfExists('cart_service_items');
     }
 };
