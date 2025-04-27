@@ -18,10 +18,6 @@ Route::get('/event-types/{id}/halls', [EventController::class, 'getHallsByEvent'
 Route::get('/halls/{id}/services', [EventController::class, 'getServicesByHall']);
 Route::get('/services/{serviceId}/variants', [EventController::class, 'getVariantsByService']);
 
-Route::middleware('auth:sanctum')->post('/bookings', [BookingController::class, 'createBooking']);
-Route::middleware('auth:sanctum')->get('/bookings/{id}', [BookingController::class, 'getBookingDetails']);
-Route::middleware('auth:sanctum')->get('/user/bookings', [BookingController::class, 'getUserBookings']);
-
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/admin/create-event-type', [AdminContentController::class, 'createEventType']);
     Route::post('/admin/create-hall', [AdminContentController::class, 'createHall']);

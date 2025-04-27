@@ -42,7 +42,7 @@ class AdminContentController extends Controller
             'location_en' => 'required',
             'capacity' => 'required|integer',
             'price' => 'required|numeric',
-            '   ' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:2048',
         ]);
 
         $hall = new Hall($validated);

@@ -19,7 +19,7 @@ class EventController extends Controller
         }
         return response()->json([
             'message' => 'event retrieved successfully',
-            'stores' => $eventTypes,
+            'events' => $eventTypes,
         ], 200);
     }
 
@@ -35,7 +35,7 @@ class EventController extends Controller
                     }
                     return response()->json([
                         'message' => 'hall retrieved successfully',
-                        'stores' => $halls,
+                        'halls' => $halls,
                     ], 200);
     }
 
@@ -51,7 +51,7 @@ class EventController extends Controller
                     }
                     return response()->json([
                         'message' => 'hall services retrieved successfully',
-                        'stores' => $hall->services,
+                        'services' => $hall->services,
                     ], 200);
         
     }

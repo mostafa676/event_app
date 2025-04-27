@@ -43,7 +43,7 @@ class UserController extends Controller
         $user = User::where('email', $credentials['email'])->first();
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return response()->json([
-                'message' => 'Invalid ',
+                'message' => 'Invalid credentials ',
             ], 401);
         }
             $token = $user->createToken($user->name . 'auth_token')->plainTextToken;

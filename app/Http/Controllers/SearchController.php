@@ -15,7 +15,7 @@ class SearchController extends Controller
 {
     $query = $request->input('query');
 
-    if (!$request->has('query') || empty($request->query)) {
+    if (empty($query)) {
         return response()->json(['message' => 'يرجى إدخال كلمة للبحث'], 400);
     }    
 
