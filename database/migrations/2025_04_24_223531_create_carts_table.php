@@ -16,6 +16,9 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('event_type_id')->nullable()->constrained()->onDelete('cascade');
             $table->foreignId('hall_id')->nullable()->constrained()->onDelete('cascade');
+            $table->date('reservation_date')->nullable();
+            $table->time('start_time')->nullable();
+            $table->time('end_time')->nullable();
             $table->timestamps();
         });        
     }

@@ -7,7 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Cart extends Model
 {
-    protected $fillable = ['user_id', 'event_type_id', 'hall_id'];
+    protected $fillable = [
+        'user_id', 
+        'event_type_id', 
+        'hall_id',
+        'reservation_date', 
+        'start_time', 
+        'end_time'
+    ];
 
     public function services()
     {
@@ -24,4 +31,5 @@ class Cart extends Model
         return $this->belongsTo(EventType::class, 'event_type_id');
     }
 }
+
 

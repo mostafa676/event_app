@@ -12,8 +12,9 @@ class Reservation extends Model
     
     protected $fillable = [
         'user_id', 'hall_id', 'service_id', 'event_id',
-        'reservation_date', 'status' , 'home_address'
+        'reservation_date', 'start_time', 'end_time', 'status', 'home_address', 'supervisor_id'
     ];
+    
 
     public function user() {
         return $this->belongsTo(User::class);
@@ -34,6 +35,12 @@ class Reservation extends Model
     {
         return $this->hasMany(ReservationService::class);
     }
+
+    public function supervisor()
+{
+    return $this->belongsTo(Supervisor::class);
+}
+
 
 }
 

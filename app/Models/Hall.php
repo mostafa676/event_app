@@ -31,4 +31,10 @@ public function getImageUrlAttribute()
     return $this->image ? asset('storage/' . $this->image) : null;
 }
 
+public function schedules()
+{
+    return $this->hasMany(HallSchedule::class);
+}
+
+
 }
