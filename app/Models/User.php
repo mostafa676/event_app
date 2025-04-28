@@ -59,4 +59,9 @@ public function searchHistories()
     return $this->hasMany(SearchHistory::class);
 }
 
+public function favorites()
+{
+    return $this->hasMany(Favorite::class);
+}
+
 }

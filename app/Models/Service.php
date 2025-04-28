@@ -9,12 +9,9 @@ class Service extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name_ar', 'name_en', 'price_per_unit'];
+    protected $fillable = ['name_ar', 'name_en', 'avg_price'];
 
-    public function bookingDetails()
-    {
-        return $this->hasMany(BookingServiceDetail::class);
-    }
+
     public function halls()
 {
     return $this->belongsToMany(Hall::class, 'hall_service');

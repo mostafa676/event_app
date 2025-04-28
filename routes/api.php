@@ -6,7 +6,7 @@ use App\Http\Controllers\SearchController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\BookingController;
+use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\AdminContentController;
 
 Route::post('/signup', [UserController::class, 'register']);
@@ -47,4 +47,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/cart/add-service', [ReservationController::class, 'addService']);
     Route::delete('/cart/remove-service/{id}', [ReservationController::class, 'removeService']);
     Route::delete('/cart/clear', [ReservationController::class, 'clearCart']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+Route::post('/favorites/add', [FavoriteController::class, 'addToFavorites']);
+Route::post('/favorites/remove', [FavoriteController::class, 'removeFromFavorites']);
+Route::get('/favorites', [FavoriteController::class, 'listFavorites']);
 });

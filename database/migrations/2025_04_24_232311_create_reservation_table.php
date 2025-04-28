@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignId('service_id')->nullable()->constrained()->onDelete('cascade');
             $table->foreignId('event_id')->constrained('event_types')->onDelete('cascade');
             $table->date('reservation_date');
+            $table->string('home_address')->nullable();
             $table->enum('status', ['pending', 'confirmed'])->default('pending');
             $table->timestamps();
         });

@@ -49,17 +49,26 @@ public function confirmReservation(Request $request)
 {
     $request->validate([
         'reservation_date' => 'required|date',
+        'home_address' => 'nullable|string|max:255', // نسمح بإرسال العنوان
     ]);
 
     $cart = Cart::with('services')->where('user_id', auth()->id())->firstOrFail();
 
-    $reservation = Reservation::create([
+    // تجهيز بيانات الحجز
+    $reservationData = [
         'user_id' => auth()->id(),
         'reservation_date' => $request->reservation_date,
         'hall_id' => $cart->hall_id,
         'event_id' => $cart->event_type_id,
         'status' => 'confirmed',
-    ]);
+    ];
+
+    // إذا الصالة هي بيت المستخدم، خزن العنوان
+    if ($cart->hall_id == 9999 && $request->filled('home_address')) {
+        $reservationData['home_address'] = $request->home_address;
+    }
+
+    $reservation = Reservation::create($reservationData);
 
     foreach ($cart->services as $item) {
         $reservation->services()->create([
@@ -106,10 +115,12 @@ public function confirmReservation(Request $request)
                 'name_ar' => $reservation->event->name_ar ?? null,
                 'name_en' => $reservation->event->name_en ?? null,
             ],
+            'home_address' => $reservation->home_address ?? null, // نعرض العنوان إذا موجود
             'services' => $servicesDetails,
         ]
     ], 201);
 }
+
 
 public function getCart()
 {

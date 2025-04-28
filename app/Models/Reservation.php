@@ -12,7 +12,7 @@ class Reservation extends Model
     
     protected $fillable = [
         'user_id', 'hall_id', 'service_id', 'event_id',
-        'reservation_date', 'status'
+        'reservation_date', 'status' , 'home_address'
     ];
 
     public function user() {

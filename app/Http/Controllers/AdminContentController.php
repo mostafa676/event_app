@@ -61,7 +61,7 @@ class AdminContentController extends Controller
         $validated = $request->validate([
             'name_ar' => 'required',
             'name_en' => 'required',
-            'price_per_unit' => 'required|numeric',
+            'avg_price' => 'required|numeric',
             'image' => 'nullable|image|max:2048',
         ]);
 
