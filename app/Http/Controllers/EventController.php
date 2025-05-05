@@ -26,7 +26,7 @@ class EventController extends Controller
     public function getHallsByEvent($eventTypeId)
     {
         $halls = Hall::where('event_type_id', $eventTypeId)
-                     ->select('id', 'name_ar', 'name_en', 'location_ar', 'location_en', 'capacity', 'price')
+                     ->select('id', 'name_ar', 'name_en', 'location_ar', 'location_en', 'capacity', 'price' , 'image')
                      ->get();
                      if (!$halls){
                         return response()->json([

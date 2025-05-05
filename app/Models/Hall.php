@@ -11,7 +11,7 @@ class Hall extends Model
 
     protected $fillable = [
         'name_ar', 'name_en', 'location_ar', 'location_en',
-        'capacity', 'price', 'event_type_id'
+        'capacity', 'price', 'event_type_id' , 'image'
     ];
 
     public function eventType()

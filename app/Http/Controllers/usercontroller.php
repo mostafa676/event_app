@@ -85,6 +85,7 @@ public function uploadImage(Request $request)
     ]);
 }
 
+
 public function updateProfile(Request $request)
 {
     $user = auth()->user();
@@ -92,9 +93,27 @@ public function updateProfile(Request $request)
     $validated = $request->validate([
         'name' => 'sometimes|string|max:255',
         'email' => 'sometimes|email|unique:users,email,' . $user->id,
-        'phone' => 'sometimes|digits:10|unique:users,phone,' . $user->id,
         'bio' => 'nullable|string|max:1000',
+        // تحقق من كلمة المرور الحالية فقط إذا المستخدم طلب تغييرها
+        'password' => 'required_with:new_password|string',
+        'new_password' => 'nullable|string|min:8|confirmed',
     ]);
+
+    // إذا طلب تغيير كلمة المرور
+    if ($request->filled('new_password')) {
+        // تحقق من صحة كلمة المرور الحالية
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'كلمة المرور الحالية غير صحيحة',
+            ], 403);
+        }
+
+        // خزّن كلمة المرور الجديدة
+        $validated['password'] = Hash::make($request->new_password);
+    } else {
+        // إزالة كلمة المرور من الـ validated إذا لم يتم إرسالها
+        unset($validated['password']);
+    }
 
     $user->update($validated);
 
