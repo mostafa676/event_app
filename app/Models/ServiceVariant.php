@@ -7,11 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class ServiceVariant extends Model
 {
-    protected $fillable = ['service_id', 'name_ar', 'name_en', 'color', 'price'];
+    protected $fillable = ['service_id', 'name_ar', 'name_en', 'color', 'price' , 'image'];
 
     public function service()
     {
         return $this->belongsTo(Service::class);
+    }
+    public function reservationServices()
+    {
+        return $this->hasMany(ReservationService::class);
     }
     protected $appends = ['image_url'];
 

@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('name_en');
             $table->string('color')->nullable();
             $table->decimal('price', 10, 2);
+            $table->text('descrption')->nullable();
             $table->string('image')->nullable();
             $table->timestamps();
         });        
@@ -30,4 +31,5 @@ return new class extends Migration
     {
         Schema::dropIfExists('service_variants');
     }
+    
 };

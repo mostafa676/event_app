@@ -11,10 +11,14 @@ class Reservation extends Model
     protected $table = 'reservation';
     
     protected $fillable = [
-        'user_id', 'hall_id', 'service_id', 'event_id',
-        'reservation_date', 'start_time', 'end_time', 'status', 'home_address', 'supervisor_id'
+        'user_id', 'hall_id', 'event_type_id',
+        'reservation_date', 'start_time', 'end_time', 'status', 'home_address',
+        'total_price', 'discount_code_id', 'discount_amount'
     ];
     
+ protected $casts = [
+        'reservation_date' => 'date',
+    ];
 
     public function user() {
         return $this->belongsTo(User::class);
@@ -24,23 +28,18 @@ class Reservation extends Model
         return $this->belongsTo(Hall::class);
     }
 
-    public function service() {
-        return $this->belongsTo(Service::class);
-    }
-
-    public function event() {
+    public function eventType() {
         return $this->belongsTo(EventType::class);
     }
+    public function discountCode()
+    {
+        return $this->belongsTo(DiscountCode::class);
+    }
+
     public function services()
     {
         return $this->hasMany(ReservationService::class);
     }
-
-    public function supervisor()
-{
-    return $this->belongsTo(Supervisor::class);
-}
-
 
 }
 

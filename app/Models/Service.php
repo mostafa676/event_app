@@ -9,7 +9,7 @@ class Service extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name_ar', 'name_en', 'avg_price'];
+    protected $fillable = ['name_ar', 'name_en', 'image'];
 
 
     public function halls()
@@ -19,7 +19,12 @@ class Service extends Model
 public function variants()
 {
     return $this->hasMany(ServiceVariant::class);
+
 }
+public function reservationServices()
+    {
+        return $this->hasMany(ReservationService::class);
+    }
 protected $appends = ['image_url'];
 
 public function getImageUrlAttribute()

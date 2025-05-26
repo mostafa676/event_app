@@ -23,4 +23,9 @@ public function getImageUrlAttribute()
     return $this->image ? asset('storage/' . $this->image) : null;
 }
 
+public function reservations()
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
 }

@@ -22,7 +22,6 @@ class EventController extends Controller
             'events' => $eventTypes,
         ], 200);
     }
-
     public function getHallsByEvent($eventTypeId)
     {
         $halls = Hall::where('event_type_id', $eventTypeId)
@@ -38,22 +37,22 @@ class EventController extends Controller
                         'halls' => $halls,
                     ], 200);
     }
-
     public function getServicesByHall($hallId)
     {
         $hall = Hall::with(['services' => function ($query) {
-            $query->select('services.id', 'name_ar', 'name_en', 'price_per_unit');
+            $query->select('services.id', 'name_ar', 'name_en', 'avg_price');
         }])->findOrFail($hallId);
-                if (!$hall){
-                        return response()->json([
-                            'message' => 'error',
-                        ], 200);
-                    }
-                    return response()->json([
-                        'message' => 'hall services retrieved successfully',
-                        'services' => $hall->services,
-                    ], 200);
-        
+    
+        if (!$hall){
+            return response()->json([
+                'message' => 'error',
+            ], 200);
+        }
+    
+        return response()->json([
+            'message' => 'hall services retrieved successfully',
+            'services' => $hall->services,
+        ], 200);
     }
 
     public function getVariantsByService($serviceId)

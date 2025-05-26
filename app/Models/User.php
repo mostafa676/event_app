@@ -18,13 +18,8 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'phone',
-        'is_admin',
-        'image',
-        'bio',
+'name', 'email', 'password', 'phone', 'password', 'role', 'image', 
+        'dark_mode', 'language'
     ];
     
     /**
@@ -59,9 +54,75 @@ public function searchHistories()
     return $this->hasMany(SearchHistory::class);
 }
 
-public function favorites()
+public function halls()
+    {
+        return $this->hasMany(Hall::class);
+    }
+
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
+    public function ownedCoordinators()
+    {
+        return $this->hasMany(Coordinator::class, 'hall_owner_id');
+    }
+
+    public function coordinatorProfile()
+    {
+        return $this->hasOne(Coordinator::class);
+    }
+
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    // Scopes للصلاحيات
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isHallOwner()
+    {
+        return $this->role === 'hall_owner';
+    }
+
+    public function isCoordinator()
+    {
+        return $this->role === 'coordinator';
+    }
+
+    // في ملف app/Models/User.php
+public function hallStatistics()
 {
-    return $this->hasMany(Favorite::class);
+    return $this->hasManyThrough(
+        Statistic::class,
+        Hall::class,
+        'user_id', // Foreign key on halls table
+        'hall_id', // Foreign key on statistics table
+        'id', // Local key on users table
+        'id' // Local key on halls table
+    );
+}
+
+public function getCompletedReservationsCountAttribute()
+{
+    return $this->hallStatistics()
+        ->where('metric_type', 'completed_reservations')
+        ->sum('count');
 }
 
 }

@@ -9,112 +9,8 @@ use App\Models\ServiceVariant;
 use App\Models\Supervisor;
 use Illuminate\Http\Request;
 
-
 class ReservationController extends Controller
 {
-
-// public function confirmReservation(Request $request)
-// {
-//     $request->validate([
-//         'reservation_date' => 'required|date',
-//         'home_address' => 'nullable|string|max:255',
-//     ]);
-
-//     $cart = Cart::with('services')->where('user_id', auth()->id())->firstOrFail();
-
-//     // نحسب التاريخ والوقت من بيانات السلة
-//     $reservationDate = $cart->reservation_date;
-//     $startTime = $cart->start_time;
-//     $endTime = $cart->end_time;
-
-//     if (!$reservationDate || !$startTime || !$endTime) {
-//         return response()->json(['message' => 'يجب تحديد تاريخ ووقت الحجز أولاً.'], 422);
-//     }
-
-//     // 📌 نبحث عن مشرف فاضي بهالوقت
-//     $supervisor = Supervisor::whereDoesntHave('reservations', function($query) use ($reservationDate, $startTime, $endTime) {
-//         $query->where('reservation_date', $reservationDate)
-//               ->where(function($q) use ($startTime, $endTime) {
-//                   $q->whereBetween('start_time', [$startTime, $endTime])
-//                     ->orWhereBetween('end_time', [$startTime, $endTime])
-//                     ->orWhere(function($q2) use ($startTime, $endTime) {
-//                         $q2->where('start_time', '<=', $startTime)
-//                            ->where('end_time', '>=', $endTime);
-//                     });
-//               });
-//     })->first();
-
-//     if (!$supervisor) {
-//         return response()->json([
-//             'message' => 'لا يوجد مشرف متاح في هذا الوقت. الرجاء اختيار وقت آخر.'
-//         ], 400);
-//     }
-
-//     // إنشاء الحجز
-//     $reservationData = [
-//         'user_id' => auth()->id(),
-//         'reservation_date' => $reservationDate,
-//         'hall_id' => $cart->hall_id,
-//         'event_id' => $cart->event_type_id,
-//         'start_time' => $startTime,
-//         'end_time' => $endTime,
-//         'status' => 'confirmed',
-//         'supervisor_id' => $supervisor->id,
-//     ];
-
-//     if ($cart->hall_id == 9999 && $request->filled('home_address')) {
-//         $reservationData['home_address'] = $request->home_address;
-//     }
-
-//     $reservation = Reservation::create($reservationData);
-
-//     // إضافة الخدمات
-//     foreach ($cart->services as $item) {
-//         $reservation->services()->create([
-//             'service_id' => $item->service_id,
-//             'service_variant_id' => $item->service_variant_id,
-//             'quantity' => $item->quantity,
-//             'unit_price' => $item->unit_price,
-//         ]);
-//     }
-
-//     // تنظيف السلة
-//     $cart->services()->delete();
-//     $cart->delete();
-
-//     $reservation->load(['hall', 'event', 'services.service', 'services.variant', 'supervisor']);
-
-//     return response()->json([
-//         'message' => "تم تأكيد الحجز بنجاح. لأي استفسار، اتصل بالمشرفين: {$supervisor->phone}",
-//         'reservation' => [
-//             'id' => $reservation->id,
-//             'reservation_date' => $reservation->reservation_date,
-//             'start_time' => $reservation->start_time,
-//             'end_time' => $reservation->end_time,
-//             'status' => $reservation->status,
-//             'hall' => [
-//                 'id' => $reservation->hall->id ?? null,
-//                 'name_ar' => $reservation->hall->name_ar ?? null,
-//                 'name_en' => $reservation->hall->name_en ?? null,
-//                 'price' => $reservation->hall->price ?? null,
-//             ],
-//             'event' => [
-//                 'id' => $reservation->event->id ?? null,
-//                 'name_ar' => $reservation->event->name_ar ?? null,
-//                 'name_en' => $reservation->event->name_en ?? null,
-//             ],
-//             'home_address' => $reservation->home_address ?? null,
-//             'services' => $reservation->services,
-//             'supervisor' => [
-//                 'id' => $supervisor->id,
-//                 'name' => $supervisor->name,
-//                 'phone' => $supervisor->phone,
-//             ]
-//         ]
-//     ], 201);
-// }
-
-
 public function confirmReservation(Request $request)
 {
     $request->validate([
@@ -123,14 +19,10 @@ public function confirmReservation(Request $request)
         'end_time' => 'required|date_format:H:i',   // ووقت نهاية
         'home_address' => 'nullable|string|max:255',
     ]);
-
     $cart = Cart::with('services')->where('user_id', auth()->id())->firstOrFail();
-
     $reservationDate = $request->reservation_date;
     $startTime = $request->start_time;
     $endTime = $request->end_time;
-
-    // 📌 نبحث عن مشرف متاح حسب أقل عدد حجوزات وما عنده تعارض وقت
     $supervisor = Supervisor::whereDoesntHave('reservations', function($query) use ($reservationDate, $startTime, $endTime) {
         $query->where('reservation_date', $reservationDate)
               ->where(function($q) use ($startTime, $endTime) {
@@ -145,13 +37,11 @@ public function confirmReservation(Request $request)
     ->withCount('reservations') // نحسب عدد الحجوزات عكل مشرف
     ->orderBy('reservations_count', 'asc') // ترتيب الأقل حجوزات
     ->first();
-
     if (!$supervisor) {
         return response()->json([
             'message' => 'لا يوجد مشرفين متاحين حالياً، الرجاء المحاولة لاحقاً.'
         ], 400);
     }
-
     $reservationData = [
         'user_id' => auth()->id(),
         'reservation_date' => $reservationDate,
@@ -162,13 +52,10 @@ public function confirmReservation(Request $request)
         'status' => 'confirmed',
         'supervisor_id' => $supervisor->id,
     ];
-
     if ($cart->hall_id == 9999 && $request->filled('home_address')) {
         $reservationData['home_address'] = $request->home_address;
     }
-
     $reservation = Reservation::create($reservationData);
-
     foreach ($cart->services as $item) {
         $reservation->services()->create([
             'service_id' => $item->service_id,
@@ -177,13 +64,9 @@ public function confirmReservation(Request $request)
             'unit_price' => $item->unit_price,
         ]);
     }
-
-    // حذف السلة بعد التأكيد
     $cart->services()->delete();
     $cart->delete();
-
     $reservation->load(['hall', 'event', 'services.service', 'services.variant', 'supervisor']);
-
     return response()->json([
         'message' => "تم تأكيد الحجز بنجاح. لأي استفسار، اتصل بالمشرف: {$supervisor->phone}",
         'reservation' => [
@@ -213,26 +96,17 @@ public function confirmReservation(Request $request)
         ]
     ], 201);
 }
-
 public function getCart()
 {
     $cart = Cart::with('services.variant.service', 'hall', 'event')
         ->firstOrCreate(['user_id' => auth()->id()]);
-
-    // حساب السعر الإجمالي
     $totalPrice = 0;
-
-    // إضافة سعر الصالة إذا موجودة
     if ($cart->hall) {
         $totalPrice += $cart->hall->price;
     }
-
-    // حساب أسعار الخدمات
     foreach ($cart->services as $item) {
         $totalPrice += $item->quantity * $item->unit_price;
     }
-
-    // تجهيز تفاصيل الخدمات
     $servicesDetails = $cart->services->map(function ($serviceItem) {
         return [
             'id' => $serviceItem->id,
@@ -245,7 +119,6 @@ public function getCart()
             'total_price' => $serviceItem->quantity * $serviceItem->unit_price,
         ];
     });
-
     return response()->json([
         'cart_id' => $cart->id,
         'event' => $cart->event ? [
@@ -267,13 +140,10 @@ public function getCart()
     public function selectEventType(Request $request)
     {
         $request->validate(['event_type_id' => 'required|exists:event_types,id']);
-
         $cart = Cart::firstOrCreate(['user_id' => auth()->id()]);
         $cart->update(['event_type_id' => $request->event_type_id]);
-
         return response()->json(['message' => 'تم اختيار نوع الحدث بنجاح', 'cart' => $cart]);
     }
-
     public function selectHall(Request $request)
 {
     $request->validate([
@@ -282,8 +152,6 @@ public function getCart()
         'start_time' => 'required|date_format:H:i',
         'end_time' => 'required|date_format:H:i|after:start_time',
     ]);
-
-    // 🔥 تحقق هل يوجد حجز بنفس الصالة ونفس اليوم ونفس الوقت
     $conflict = Reservation::where('hall_id', $request->hall_id)
         ->where('reservation_date', $request->reservation_date)
         ->where(function ($query) use ($request) {
@@ -293,14 +161,11 @@ public function getCart()
             });
         })
         ->exists();
-
     if ($conflict) {
         return response()->json([
             'message' => 'عذراً، هذه الفترة الزمنية محجوزة بالفعل للصالة المطلوبة.'
         ], 400);
     }
-
-    // 🛒 إنشاء أو تحديث السلة
     $cart = Cart::firstOrCreate(['user_id' => auth()->id()]);
     $cart->update([
         'hall_id' => $request->hall_id,
@@ -308,7 +173,6 @@ public function getCart()
         'start_time' => $request->start_time,
         'end_time' => $request->end_time,
     ]);
-
     return response()->json([
         'message' => 'تم اختيار الصالة بنجاح.',
         'cart' => $cart
@@ -322,11 +186,8 @@ public function getCart()
             'service_variant_id' => 'required|exists:service_variants,id',
             'quantity' => 'required|integer|min:1'
         ]);
-        
         $variant = ServiceVariant::findOrFail($request->service_variant_id);
-
         $cart = Cart::firstOrCreate(['user_id' => auth()->id()]);
-
         $item = CartServiceItem::create([
             'cart_id' => $cart->id,
             'service_id' => $request->service_id,
@@ -334,21 +195,16 @@ public function getCart()
             'quantity' => $request->quantity,
             'unit_price' => $variant->price,
         ]);
-
         return response()->json(['message' => 'تمت إضافة الخدمة للسلة', 'item' => $item]);
     }
-
     public function removeService($id)
     {
         $item = CartServiceItem::where('id', $id)
                 ->whereHas('cart', fn($q) => $q->where('user_id', auth()->id()))
                 ->firstOrFail();
-
         $item->delete();
-
         return response()->json(['message' => 'تم حذف الخدمة من السلة']);
     }
-
     public function clearCart()
     {
         $cart = Cart::where('user_id', auth()->id())->first();
@@ -356,7 +212,6 @@ public function getCart()
             $cart->services()->delete();
             $cart->delete();
         }
-
         return response()->json(['message' => 'تم إفراغ السلة']);
     }
 
