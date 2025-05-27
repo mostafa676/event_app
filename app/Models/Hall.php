@@ -27,8 +27,7 @@ class Hall extends Model
 
     public function services()
     {
-        return $this->belongsToMany(Service::class, 'hall_service')
-                    ->withPivot('price');
+        return $this->belongsToMany(Service::class, 'hall_service');
     }
 
     public function schedules()

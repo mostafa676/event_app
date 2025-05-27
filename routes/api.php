@@ -1,22 +1,22 @@
 <?php
 
-use App\Http\Controllers\EventController;
+use App\Http\Controllers\User\HallController;
 use App\Http\Controllers\ReservationController;
-use App\Http\Controllers\SearchController;
+use App\Http\Controllers\User\SearchController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\User\AuthController; 
+use App\Http\Controllers\User\FavoriteController;
 use App\Http\Controllers\AdminContentController;
 
-Route::post('/signup', [UserController::class, 'register']);//
-Route::post('/login', [UserController::class, 'login']);//
-Route::middleware('auth:sanctum')->post('/logout', [UserController::class, 'logout']);//
+Route::post('/signup', [AuthController::class, 'register']);//
+Route::post('/login', [AuthController::class, 'login']);//
+Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);//
 
-Route::get('/event-types', [EventController::class, 'getEventTypes']);//
-Route::get('/event-types/{id}/halls', [EventController::class, 'getHallsByEvent']);//
-Route::get('/halls/{id}/services', [EventController::class, 'getServicesByHall']);//
-Route::get('/services/{serviceId}/variants', [EventController::class, 'getVariantsByService']);//
+Route::get('/event-types', [HallController::class, 'getEventTypes']);//
+Route::get('/event-types/{id}/halls', [HallController::class, 'getHallsByEvent']);//
+Route::get('/halls/{id}/services', [HallController::class, 'getServicesByHall']);//
+Route::get('/services/{serviceId}/variants', [HallController::class, 'getVariantsByService']);//
 
 Route::middleware(['auth:sanctum', 'admin'])->group(function () { 
     Route::post('/admin/create-event-type', [AdminContentController::class, 'createEventType']);//
@@ -33,11 +33,10 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 Route::middleware('auth:sanctum')->get('/user/search-history', [SearchController::class, 'searchHistory']);//
 Route::middleware('auth:sanctum')->get('/search/Events', [SearchController::class, 'searchEvents']);//
 Route::middleware('auth:sanctum')->get('/search/halls', [SearchController::class, 'searchHalls']);//
-Route::middleware('auth:sanctum')->get('/search/services', [SearchController::class, 'searchServices']);//
 
-Route::middleware('auth:sanctum')->post('/user/upload-image', [UserController::class, 'uploadImage']);//
-Route::middleware('auth:sanctum')->put('/user/update-profile', [UserController::class, 'updateProfile']);//
-Route::middleware('auth:sanctum')->get('/user/profile', [UserController::class, 'profile']);//
+Route::middleware('auth:sanctum')->post('/user/upload-image', [AuthController::class, 'uploadImage']);//
+Route::middleware('auth:sanctum')->put('/user/update-profile', [AuthController::class, 'updateProfile']);//
+Route::middleware('auth:sanctum')->get('/user/profile', [AuthController::class, 'profile']);//
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/reservation/confirm', [ReservationController::class, 'confirmReservation']);

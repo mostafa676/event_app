@@ -9,7 +9,7 @@ class Service extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name_ar', 'name_en', 'image'];
+    protected $fillable = ['name_ar', 'name_en'];
 
 
     public function halls()
@@ -25,11 +25,6 @@ public function reservationServices()
     {
         return $this->hasMany(ReservationService::class);
     }
-protected $appends = ['image_url'];
 
-public function getImageUrlAttribute()
-{
-    return $this->image ? asset('storage/' . $this->image) : null;
-}
 
 }
