@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\HallOwnerController;
 use App\Http\Controllers\User\HallController;
 use App\Http\Controllers\User\ReservationController;
 use App\Http\Controllers\User\SearchController;
@@ -31,6 +32,13 @@ Route::middleware(['auth:sanctum', 'admin'])->group(callback: function () {
     // Route::delete('/admin/delete-service/{name}', [AdminContentController::class, 'deleteServiceByName']);//
     // Route::delete('/admin/delete-service-variant/{name}', [AdminContentController::class, 'deleteServiceVariantByName']);//
 });
+
+Route::prefix('hall-owners')->group(function () {
+            Route::get('/', [HallOwnerController::class, 'index']); // عرض جميع مالكي الصالات
+            Route::get('/{id}', [HallOwnerController::class, 'show']); // عرض تفاصيل مالك صالة
+            Route::post('/', [HallOwnerController::class, 'createHallOwner']); // إنشاء مالك صالة
+            Route::delete('/{id}', [HallOwnerController::class, 'deleteHallOwner']); // حذف مالك صالة
+        });
 
 Route::middleware('auth:sanctum')->get('/user/search-history', [SearchController::class, 'searchHistory']);//
 Route::middleware('auth:sanctum')->get('/search/Events', [SearchController::class, 'searchEvents']);//

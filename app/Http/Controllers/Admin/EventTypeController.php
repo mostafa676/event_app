@@ -14,7 +14,7 @@ class EventTypeController extends Controller
     private function storeImage($file)
     {
         if ($file) {
-            return $file->store('event_type_images', 'public'); // مجلد خاص بأنواع الأحداث
+            return $file->store('event_type_images', 'public');
         }
         return null;
     }
@@ -89,12 +89,6 @@ class EventTypeController extends Controller
         }
     }
 
-    /**
-     * عرض جميع أنواع الأحداث.
-     * (يمكن أن يستخدمه كل من Admin و User)
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function index()
     {
         try {
