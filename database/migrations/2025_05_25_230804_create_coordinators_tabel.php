@@ -23,14 +23,16 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('coordinator_type_id')->constrained();
             $table->foreignId('hall_owner_id')->constrained('users')->onDelete('cascade');
-            $table->boolean('is_active')->default(true); // إضافة حالة التنشيط
-            $table->decimal('hourly_rate', 8, 2)->nullable(); // إضافة معدل الأجر
+            $table->string('description')->nullable();
+            $table->boolean('is_active')->default(true); 
+            $table->decimal('hourly_rate', 8, 2)->nullable(); 
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('coordinators_tabel');
+        Schema::dropIfExists('coordinators');
+        Schema::dropIfExists('coordinator_types');
     }
 };

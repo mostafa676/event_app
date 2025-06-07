@@ -38,10 +38,10 @@ class HallOwnerController extends Controller
         }
     }
 
-    public function showByPhone($phone) 
+    public function show($id) 
     {
         try {
-            $hallOwner = User::where('phone', $phone)->where('role', 'hall_owner')->first();
+            $hallOwner = User::where('id', $id)->where('role', 'hall_owner')->first();
             if (!$hallOwner) {
                 return response()->json([
                     'status' => false,

@@ -41,5 +41,10 @@ class Reservation extends Model
         return $this->hasMany(ReservationService::class);
     }
 
+public function reservationServices()
+{
+    return $this->hasMany(\App\Models\ReservationService::class, 'reservation_id');
+}
+
 }
 

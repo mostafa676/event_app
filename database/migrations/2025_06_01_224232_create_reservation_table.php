@@ -18,9 +18,13 @@ return new class extends Migration
             $table->time('end_time')->nullable();  
             $table->string('home_address')->nullable();
             $table->enum('status', ['pending','cancelled','confirmed'])->default('pending');
-            $table->decimal('total_price', 12, 2);
+            $table->decimal('total_price', 12, 2)->default(0);
             $table->decimal('discount_amount', 10, 2)->default(0);
-            $table->foreignId('discount_code_id')->nullable()->constrained('discount_codes')->onDelete('set null'); // ربط بكود الخصم
+            $table->foreignId('coordinator_id')
+                  ->nullable() // اجعله nullable لأن الحجز قد لا يكون له منسق رئيسي في البداية
+                  ->constrained('coordinators') // يربط بجدول 'coordinators'
+                  ->onDelete('set null') // إذا تم حذف المنسق، يتم تعيين القيمة إلى NULL
+                  ->after('discount_code_id'); // يمكنك تغيير هذا لتحديد موقعه$table->foreignId('discount_code_id')->nullable()->constrained('discount_codes')->onDelete('set null'); // ربط بكود الخصم
             $table->timestamps();
         });
         
@@ -31,3 +35,4 @@ return new class extends Migration
         Schema::dropIfExists('reservation');
     }
 };
+    

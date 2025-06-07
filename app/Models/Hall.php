@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Hall extends Model
 {
@@ -50,10 +51,10 @@ class Hall extends Model
         return $this->hasManyThrough(
             Coordinator::class,
             User::class,
-            'id', // Foreign key on users table...
-            'hall_owner_id', // Foreign key on coordinators table...
-            'user_id', // Local key on halls table...
-            'id' // Local key on users table...
+            'id', 
+            'hall_owner_id',
+            'user_id',
+            'id'
         );
     }
     
@@ -70,11 +71,20 @@ public function getPopularityAttribute()
 }
 protected $appends = ['image_url'];
 
-public function getImageUrlAttribute()
-{
-    return $this->image ? asset('storage/' . $this->image) : null;
-}
-
+    public function getImageUrlAttribute()
+    {
+        $urls = [];
+        if ($this->image_1) {
+            $urls['image_1'] = Storage::url($this->image_1);
+        }
+        if ($this->image_2) {
+            $urls['image_2'] = Storage::url($this->image_2);
+        }
+        if ($this->image_3) {
+            $urls['image_3'] = Storage::url($this->image_3);
+        }
+        return $urls;
+    }
 
 
 

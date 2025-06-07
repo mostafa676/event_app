@@ -28,4 +28,5 @@ class ReservationService extends Model
     {
         return $this->belongsTo(ServiceVariant::class, 'service_variant_id');
     }
+    
 }

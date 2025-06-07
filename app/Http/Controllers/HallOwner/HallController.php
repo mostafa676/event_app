@@ -99,11 +99,11 @@ class HallController extends Controller
                 'location_en' => 'required|string|max:255',
                 'capacity' => 'required|integer|min:1',
                 'price' => 'required|numeric|min:0',
-                'images' => 'nullable|array|max:3', // مصفوفة للصور (بحد أقصى 3)
-                'images.*' => 'image|mimes:jpeg,png,jpg|max:2048', // قواعد لكل صورة في المصفوفة
+                'images' => 'nullable|array|max:3',
+                'images.*' => 'image|mimes:jpeg,png,jpg|max:2048', 
             ]);
             $hallData = [
-                'user_id' => auth()->id(), // ربط الصالة بمالكها الحالي
+                'user_id' => auth()->id(),
                 'name_ar' => $validated['name_ar'],
                 'name_en' => $validated['name_en'],
                 'event_type_id' => $validated['event_type_id'],
@@ -113,7 +113,7 @@ class HallController extends Controller
                 'price' => $validated['price'],
             ];
             $imagePaths = $this->storeImages($request->file('images'));
-            $hallData = array_merge($hallData, $imagePaths); // دمج مسارات الصور مع بيانات الصالة
+            $hallData = array_merge($hallData, $imagePaths); 
             $hall = Hall::create($hallData);
             return response()->json([
                 'status' => true,
@@ -155,8 +155,8 @@ class HallController extends Controller
                 'location_en' => 'required|string|max:255',
                 'capacity' => 'required|integer|min:1',
                 'price' => 'required|numeric|min:0',
-                'images' => 'nullable|array|max:3', // مصفوفة للصور (بحد أقصى 3)
-                'images.*' => 'image|mimes:jpeg,png,jpg|max:2048', // قواعد لكل صورة في المصفوفة
+                'images' => 'nullable|array|max:3',
+                'images.*' => 'image|mimes:jpeg,png,jpg|max:2048', 
             ]);
             $hallData = [
                 'name_ar' => $validated['name_ar'],
@@ -168,7 +168,6 @@ class HallController extends Controller
                 'price' => $validated['price'],
             ];
             if ($request->hasFile('images')) {
-                // حذف الصور القديمة قبل تخزين الجديدة
                 $this->deleteOldImages($hall, ['image_1', 'image_2', 'image_3']);
                 $imagePaths = $this->storeImages($request->file('images'));
                 $hallData = array_merge($hallData, $imagePaths);
@@ -232,13 +231,16 @@ class HallController extends Controller
                     'message' => 'الصالة غير موجودة أو لا تملك صلاحية تعديل جدولها.',
                 ], 404);
             }
+
             $request->validate([
                 'schedules' => 'required|array',
                 'schedules.*.day_of_week' => 'required|string|in:sunday,monday,tuesday,wednesday,thursday,friday,saturday',
-                'schedules.*.start_time' => 'required|date_format:H:i',
-                'schedules.*.end_time' => 'required|date_format:H:i|after:schedules.*.start_time',
+                // القواعد المعدلة: start_time و end_time مطلوبة فقط إذا كانت is_available = true
+                'schedules.*.start_time' => 'required_if:schedules.*.is_available,true|nullable|date_format:H:i',
+                'schedules.*.end_time' => 'required_if:schedules.*.is_available,true|nullable|date_format:H:i|after:schedules.*.start_time',
                 'schedules.*.is_available' => 'boolean', // اختياري، الافتراضي true
             ]);
+
             foreach ($request->schedules as $scheduleData) {
                 HallSchedule::updateOrCreate(
                     [
@@ -246,16 +248,18 @@ class HallController extends Controller
                         'day_of_week' => $scheduleData['day_of_week'],
                     ],
                     [
-                        'start_time' => $scheduleData['start_time'],
-                        'end_time' => $scheduleData['end_time'],
+                        'start_time' => $scheduleData['is_available'] ? $scheduleData['start_time'] : null, // قم بتعيين null إذا كانت غير متاحة
+                        'end_time' => $scheduleData['is_available'] ? $scheduleData['end_time'] : null,     // قم بتعيين null إذا كانت غير متاحة
                         'is_available' => $scheduleData['is_available'] ?? true,
                     ]
                 );
             }
+
+            $hall->load('schedules'); 
             return response()->json([
                 'status' => true,
                 'message' => 'تم تحديث جدول أوقات الصالة بنجاح.',
-                'hall_schedules' => $hall->schedules, // جلب الجداول المحدثة
+                'hall_schedules' => $hall->schedules,
             ], 200);
 
         } catch (ValidationException $e) {

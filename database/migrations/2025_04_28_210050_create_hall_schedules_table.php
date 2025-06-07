@@ -12,8 +12,8 @@ class CreateHallSchedulesTable extends Migration
             $table->id();
             $table->foreignId('hall_id')->constrained()->onDelete('cascade');
             $table->string('day_of_week'); // Monday, Tuesday, ...
-            $table->time('start_time');
-            $table->time('end_time');
+            $table->time('start_time')->nullable();
+            $table->time('end_time')->nullable();
             $table->boolean('is_available')->default(true);
             $table->timestamps();
         });

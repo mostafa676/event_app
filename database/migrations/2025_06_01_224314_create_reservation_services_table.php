@@ -1,3 +1,4 @@
+
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -15,6 +16,9 @@ return new class extends Migration {
             $table->foreignId('coordinator_id')->nullable()->constrained('coordinators')->onDelete('set null');
             $table->integer('quantity');
             $table->decimal('unit_price', 10, 2);
+            $table->foreignId('song_id')->nullable()->constrained('songs')->onDelete('set null');
+            $table->string('custom_song_title')->nullable();
+            $table->string('custom_song_artist')->nullable();
             $table->timestamps();
         });
     }

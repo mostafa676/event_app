@@ -25,6 +25,9 @@ public function reservationServices()
     {
         return $this->hasMany(ReservationService::class);
     }
-
+public function coordinators()
+    {
+        return $this->belongsToMany(Coordinator::class, 'service_coordinator', 'service_id', 'coordinator_id');
+    }
 
 }
