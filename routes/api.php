@@ -13,11 +13,7 @@ use App\Http\Controllers\HallOwner\ServiceController as HallOwnerServiceControll
 use App\Http\Controllers\HallOwner\CoordinatorController as HallOwnerCoordinatorController; 
 use App\Http\Controllers\HallOwner\ReservationController as HallOwnerReservationController; 
 
-// =====================================================================================================
-// مسارات المستخدم (User) - عامة (لا تتطلب مصادقة)
-// =====================================================================================================
 
-// مسارات المصادقة (التسجيل والدخول) - لا تتطلب مصادقة مسبقة
 Route::post('/register', [AuthController::class, 'register']); // done
 Route::post('/login', [AuthController::class, 'login']);  // done
 
@@ -44,18 +40,29 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // مسارات الصالات والأحداث والخدمات للمستخدم (للعرض والتصفح)
+    Route::get('/events', [UserHallController::class, 'getEventTypes']); // done
+    Route::get('/place-types', [UserHallController::class, 'getPlaceTypes']); // done
+    Route::get('/place-types/{placeTypeId}/halls', [UserHallController::class, 'getHallsByPlaceType']); // done
+
     Route::prefix('halls')->group(function () {
-        Route::get('/{hallId}', [UserHallController::class, 'show']); // done
+    Route::get('/{hallId}', [UserHallController::class, 'show']); // done
+    Route::get('services/{hallId}', [UserHallController::class, 'getServicesByHall']); // done
     });
 
-    Route::prefix('events')->group(function () {
-        Route::get('/', [UserHallController::class, 'getEventTypes']); // done
-        Route::get('/{eventTypeId}/halls', [UserHallController::class, 'getHallsByEvent']);// done
-    });
-
+// الخدمات 
     Route::prefix('services')->group(function () {
-        Route::get('/{serviceId}/variants', [UserHallController::class, 'getVariantsByService']); // done
-    });
+    Route::get('service/{id}/categories', [UserHallController::class, 'getServiceCategories']); // done
+    Route::get('category/{id}/variants', [UserHallController::class, 'getCategoryVariants']); // done
+    Route::get('variant/{id}/types', [UserHallController::class, 'getVariantTypes']); // done
+
+    Route::get('/{hallOwnerId}/music', [UserHallController::class, 'getMusicServiceDetails']); // done
+    Route::post('/music/custom-song', [UserHallController::class, 'requestCustomSong']); // done
+    Route::get('/{hallOwnerId}/photographers', [UserHallController::class, 'getPhotographers']); // done
+    Route::get('/decorations/types', [UserHallController::class, 'getDecorationTypes']); //done 
+    Route::get('/decorations/{decorationTypeId}/flowers', [UserHallController::class, 'getFlowersByDecorationType']); // done
+    Route::post('/decorations/flower-placement', [UserHallController::class, 'storeFlowerPlacement']); // done
+});
+
 
     // مسارات المفضلة للمستخدم
     Route::prefix('favorites')->group(function () {
@@ -67,8 +74,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // مسارات الحجوزات للمستخدم
     Route::prefix('reservations')->group(function () {
         Route::post('/select-hall', [UserReservationController::class, 'selectHall']);  // done
-        Route::post('/add-service', [UserReservationController::class, 'addService']);      // بدو تخصيص لكل خدمة لحال يعني كل خدمة بدها تابع لحال يعني api لحال
-        Route::delete('/remove-service/{reservationServiceItemId}', [UserReservationController::class, 'removeService']);  // نقس الشي 
+        Route::post('/food', [UserReservationController::class, 'addorderFood']); // done
+        Route::post('/photographer', [UserReservationController::class, 'addassignPhotographer']);  //done
+        Route::post('/dj', [UserReservationController::class, 'addassignDJ']);//done
+        Route::post('/flowers', [UserReservationController::class, 'addFlowerDecoration']); // done
         Route::get('/summary', [UserReservationController::class, 'getReservationSummary']);  // done
         Route::post('/confirm', [UserReservationController::class, 'confirmReservation']);    // done
         Route::put('/{reservationId}', [UserReservationController::class, 'updateReservation']);  // done

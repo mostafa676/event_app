@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ServiceVariant extends Model
 {
-    protected $fillable = ['service_id', 'name_ar', 'name_en', 'color', 'description','price' , 'image'];
+    protected $fillable = ['service_category_id', 'name_ar', 'name_en', 'description' , 'image'];
 
     public function service()
     {
@@ -22,6 +22,15 @@ class ServiceVariant extends Model
 public function getImageUrlAttribute()
 {
     return $this->image ? asset('storage/' . $this->image) : null;
+}
+public function category()
+{
+    return $this->belongsTo(ServiceCategory::class, 'service_category_id');
+}
+
+public function types()
+{
+    return $this->hasMany(ServiceType::class, 'service_variant_id');
 }
 
 }

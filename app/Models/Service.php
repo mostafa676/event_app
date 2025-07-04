@@ -30,4 +30,8 @@ public function coordinators()
         return $this->belongsToMany(Coordinator::class, 'service_coordinator', 'service_id', 'coordinator_id');
     }
 
+     public function categories()
+    {
+        return $this->hasMany(ServiceCategory::class);
+    }
 }

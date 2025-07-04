@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Flower;
 use App\Models\Hall;
 use App\Models\Service;
 use App\Models\ServiceVariant;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon; // لاستخدام التواريخ والأوقات بسهولة
+use App\Models\ServiceType;
+
 
 class ReservationController extends Controller
 {
@@ -95,225 +98,181 @@ class ReservationController extends Controller
         }
     }
 
-    public function addService(Request $request)
-    {
-        try {
-            $request->validate([
-                'service_variant_id' => 'required|exists:service_variants,id',
-                'quantity' => 'required|integer|min:1|defult=1',
-                'coordinator_id' => 'nullable|exists:coordinators,id', // يمكن أن يكون DJ أو مصور
-                'song_id' => 'nullable|exists:songs,id', // للأغاني الموجودة
-                'custom_song_title' => 'nullable|string|max:255', // للأغاني المخصصة
-                'custom_song_artist' => 'nullable|string|max:255', // للأغاني المخصصة
+public function addorderFood(Request $request)
+{
+    $request->validate([
+        'reservation_id' => 'required|exists:reservation,id',
+        'items' => 'required|array',
+        'items.*.service_type_id' => 'required|exists:service_types,id',
+        'items.*.quantity' => 'required|integer|min:1',
+    ]);
+
+    try {
+        foreach ($request->items as $item) {
+            $type = ServiceType::findOrFail($item['service_type_id']);
+
+            ReservationService::create([
+                'reservation_id' => $request->reservation_id,
+                'service_id' => $type->variant->category->service_id,
+                'service_variant_id' => $type->service_variant_id,
+                'quantity' => $item['quantity'],
+                'unit_price' => $type->price,
             ]);
-
-            $user = auth()->user();
-            $reservation = Reservation::where('user_id', $user->id)
-                                    ->where('status', 'pending')
-                                    ->first();
-
-            if (!$reservation) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'يجب اختيار صالة أولاً لإنشاء حجز مؤقت.',
-                ], 400);
-            }
-
-            $variant = ServiceVariant::findOrFail($request->service_variant_id);
-            $service = $variant->service; 
-            $additionalData = [];
-
-            // مثال: إذا كانت هذه الخدمة هي خدمة "موسيقى" (DJ)
-            // ستحتاج إلى معرفة service_id الخاص بخدمة الموسيقى
-            // يمكنك تعريفه كثابت أو جلبه من قاعدة البيانات
-            // افترض أن service_id لخدمة الموسيقى هو 100
-            if ($service->id == 1) { // استبدل 100 بالـ service_id الفعلي لخدمة الموسيقى
-                if ($request->has('song_id')) {
-                    $additionalData['song_id'] = $request->song_id;
-                } elseif ($request->has('custom_song_title') && $request->has('custom_song_artist')) {
-                    $additionalData['custom_song_title'] = $request->custom_song_title;
-                    $additionalData['custom_song_artist'] = $request->custom_song_artist;
-                }
-                if ($request->has('coordinator_id')) {
-                    $additionalData['coordinator_id'] = $request->coordinator_id;
-                } else {
-                     return response()->json([
-                        'status' => false,
-                        'message' => 'يرجى اختيار منسق (DJ) لخدمة الموسيقى.',
-                    ], 400);
-                }
-            }
-            if ($service->id == 200) { 
-                if ($request->has('coordinator_id')) {
-                    $additionalData['coordinator_id'] = $request->coordinator_id;
-                } else {
-                     return response()->json([
-                        'status' => false,
-                        'message' => 'يرجى اختيار منسق (مصور) لخدمة التصوير.',
-                    ], 400);
-                }
-            }
-            $baseData = [
-                'reservation_id' => $reservation->id,
-                'service_id' => $variant->service_id,
-                'service_variant_id' => $request->service_variant_id,
-            ];
-            $dataToCreateOrUpdate = array_merge($baseData, [
-                'quantity' => $request->quantity,
-                'unit_price' => $variant->price,
-            ], $additionalData); 
-            $reservationServiceItem = ReservationService::updateOrCreate(
-                $baseData, 
-                $dataToCreateOrUpdate
-            );
-
-            $reservation->total_price = $reservation->reservationServices()->sum(DB::raw('quantity * unit_price'));
-            $reservation->save();
-
-            return response()->json([
-                'status' => true,
-                'message' => 'تمت إضافة الخدمة إلى الحجز المؤقت بنجاح.',
-                'item' => $reservationServiceItem,
-            ], 200);
-
-        } catch (ValidationException $e) {
-            Log::error('Validation error in addService: ' . $e->getMessage(), ['errors' => $e->errors()]);
-            return response()->json([
-                'status' => false,
-                'message' => 'فشل التحقق من صحة البيانات.',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('Error in addService: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء إضافة الخدمة.',
-                'error' => $e->getMessage(),
-            ], 500);
         }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تمت إضافة الطعام بنجاح إلى الحجز.',
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('Error in orderFood: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء إضافة الطعام.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
 
+public function addassignPhotographer(Request $request)
+{
+    $request->validate([
+        'reservation_id' => 'required|exists:reservation,id',
+        'coordinator_id' => 'required|exists:coordinators,id',
+        'service_id' => 'required|exists:services,id', // يجب أن يكون تصوير
+        'service_variant_id' => 'nullable|exists:service_variants,id',
+        'unit_price' => 'required|numeric|min:0',
+    ]);
 
-    public function removeService($reservationServiceItemId)
-    {
-        try {
-            $user = auth()->user();
-            $reservation = Reservation::where('user_id', $user->id)
-                                    ->where('status', 'pending')
-                                    ->first();
+    try {
+        ReservationService::create([
+            'reservation_id' => $request->reservation_id,
+            'service_id' => $request->service_id,
+            'service_variant_id' => $request->service_variant_id,
+            'coordinator_id' => $request->coordinator_id,
+            'quantity' => 1,
+            'unit_price' => $request->unit_price,
+        ]);
 
-            if (!$reservation) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'لا يوجد حجز مؤقت لإزالة الخدمات منه.',
-                ], 404);
+        return response()->json([
+            'status' => true,
+            'message' => 'تم حجز المصور بنجاح.'
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('assignPhotographer Error: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل في حجز المصور.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+public function addassignDJ(Request $request)
+{
+    $request->validate([
+        'reservation_id' => 'required|exists:reservation,id',
+        'coordinator_id' => 'required|exists:coordinators,id',
+        'service_id' => 'required|exists:services,id', // يجب أن يكون موسيقى
+        'unit_price' => 'required|numeric|min:0',
+        'song_ids' => 'nullable|array',
+        'song_ids.*' => 'exists:songs,id',
+        'custom_songs' => 'nullable|array',
+        'custom_songs.*.title' => 'required|string',
+        'custom_songs.*.artist' => 'nullable|string',
+    ]);
+
+    try {
+        // حفظ DJ
+        ReservationService::create([
+            'reservation_id' => $request->reservation_id,
+            'service_id' => $request->service_id,
+            'coordinator_id' => $request->coordinator_id,
+            'quantity' => 1,
+            'unit_price' => $request->unit_price,
+        ]);
+
+        // حفظ الأغاني العادية
+        if ($request->filled('song_ids')) {
+            foreach ($request->song_ids as $songId) {
+                ReservationService::create([
+                    'reservation_id' => $request->reservation_id,
+                    'service_id' => $request->service_id,
+                    'song_id' => $songId,
+                    'quantity' => 1,
+                    'unit_price' => 0,
+                ]);
             }
-
-            $item = ReservationService::where('id', $reservationServiceItemId)
-                                    ->where('reservation_id', $reservation->id)
-                                    ->first();
-
-            if (!$item) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'عنصر الخدمة غير موجود في الحجز المؤقت.',
-                ], 404);
-            }
-
-            $item->delete();
-
-            return response()->json([
-                'status' => true,
-                'message' => 'تم حذف الخدمة من الحجز المؤقت بنجاح.',
-            ], 200);
-
-        } catch (\Exception $e) {
-            Log::error('Error in removeService: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء حذف الخدمة.',
-                'error' => $e->getMessage(),
-            ], 500);
         }
-    }
 
-    public function getReservationSummary()
-    {
-        try {
-            $user = auth()->user();
-            $reservation = Reservation::with([
-                'hall',
-                'event',
-                'reservationServices.service',
-                'reservationServices.serviceVariant'
-            ])
-            ->where('user_id', $user->id)
-            ->where('status', 'pending')
-            ->first();
-
-            if (!$reservation) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'لا يوجد حجز مؤقت حالياً.',
-                    'summary' => null,
-                ], 404);
+        // حفظ الأغاني المخصصة
+        if ($request->filled('custom_songs')) {
+            foreach ($request->custom_songs as $custom) {
+                ReservationService::create([
+                    'reservation_id' => $request->reservation_id,
+                    'service_id' => $request->service_id,
+                    'custom_song_title' => $custom['title'],
+                    'custom_song_artist' => $custom['artist'] ?? null,
+                    'quantity' => 1,
+                    'unit_price' => 0,
+                ]);
             }
-
-            $totalPrice = 0;
-            if ($reservation->hall) {
-                $totalPrice += $reservation->hall->price;
-            }
-
-            $servicesDetails = $reservation->reservationServices->map(function ($item) use (&$totalPrice) {
-                $itemTotalPrice = $item->quantity * $item->unit_price;
-                $totalPrice += $itemTotalPrice;
-                return [
-                    'id' => $item->id,
-                    'service_name_ar' => $item->service->name_ar ?? null,
-                    'service_name_en' => $item->service->name_en ?? null,
-                    'variant_name_ar' => $item->serviceVariant->name_ar ?? null,
-                    'variant_name_en' => $item->serviceVariant->name_en ?? null,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'total_item_price' => $itemTotalPrice,
-                ];
-            });
-
-            return response()->json([
-                'status' => true,
-                'message' => 'تم جلب ملخص الحجز بنجاح.',
-                'summary' => [
-                    'reservation_id' => $reservation->id,
-                    'reservation_date' => $reservation->reservation_date,
-                    'start_time' => $reservation->start_time,
-                    'end_time' => $reservation->end_time,
-                    'hall' => $reservation->hall ? [
-                        'id' => $reservation->hall->id,
-                        'name_ar' => $reservation->hall->name_ar,
-                        'name_en' => $reservation->hall->name_en,
-                        'price' => $reservation->hall->price,
-                    ] : null,
-                    'event' => $reservation->event ? [
-                        'id' => $reservation->event->id,
-                        'name_ar' => $reservation->event->name_ar,
-                        'name_en' => $reservation->event->name_en,
-                    ] : null,
-                    'services' => $servicesDetails,
-                    'total_price' => $totalPrice,
-                ],
-            ], 200);
-
-        } catch (\Exception $e) {
-            Log::error('Error in getReservationSummary: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء جلب ملخص الحجز.',
-                'error' => $e->getMessage(),
-            ], 500);
         }
-    }
 
-    public function confirmReservation(Request $request)
+        return response()->json([
+            'status' => true,
+            'message' => 'تم حجز DJ والأغاني بنجاح.'
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('assignDJ Error: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل في حجز DJ أو الأغاني.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+public function addFlowerDecoration(Request $request)
+{
+    $request->validate([
+        'reservation_id' => 'required|exists:reservation,id',
+        'flower_id' => 'required|exists:flowers,id',
+        'location' => 'required|string',
+        'quantity' => 'required|integer|min:1',
+        'color' => 'required|string',
+        'unit_price' => 'required|numeric|min:0',
+    ]);
+
+    try {
+        $flower = Flower::findOrFail($request->flower_id);
+
+        ReservationService::create([
+            'reservation_id' => $request->reservation_id,
+            'service_id' => $flower->decorationType->service_id,
+            'service_variant_id' => $flower->decoration_type_id,
+            'quantity' => $request->quantity,
+            'unit_price' => $request->unit_price,
+            'location' => $request->location, // استخدام location هنا كمكان الزينة
+            'color' => $request->color // استخدام color هنا
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تمت إضافة الزينة بنجاح.'
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('addFlowerDecoration Error: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء حجز الزينة.',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+
+public function confirmReservation(Request $request)
     {
         try {
             $request->validate([
@@ -385,12 +344,86 @@ class ReservationController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }
+}
 
- // تحديث تفاصيل الحجز (مثل كمية الخدمات).
+public function getReservationSummary()
+    {
+        try {
+            $user = auth()->user();
+            $reservation = Reservation::with([
+                'hall',
+                'eventType',
+                'reservationServices.service',
+                'reservationServices.variant'
+            ])
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->first();
+
+            if (!$reservation) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'لا يوجد حجز مؤقت حالياً.',
+                    'summary' => null,
+                ], 404);
+            }
+
+            $totalPrice = 0;
+            if ($reservation->hall) {
+                $totalPrice += $reservation->hall->price;
+            }
+
+            $servicesDetails = $reservation->reservationServices->map(function ($item) use (&$totalPrice) {
+                $itemTotalPrice = $item->quantity * $item->unit_price;
+                $totalPrice += $itemTotalPrice;
+                return [
+                    'id' => $item->id,
+                    'service_name_ar' => $item->service->name_ar ?? null,
+                    'service_name_en' => $item->service->name_en ?? null,
+                    'variant_name_ar' => $item->serviceVariant->name_ar ?? null,
+                    'variant_name_en' => $item->serviceVariant->name_en ?? null,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'total_item_price' => $itemTotalPrice,
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'تم جلب ملخص الحجز بنجاح.',
+                'summary' => [
+                    'reservation_id' => $reservation->id,
+                    'reservation_date' => $reservation->reservation_date,
+                    'start_time' => $reservation->start_time,
+                    'end_time' => $reservation->end_time,
+                    'hall' => $reservation->hall ? [
+                        'id' => $reservation->hall->id,
+                        'name_ar' => $reservation->hall->name_ar,
+                        'name_en' => $reservation->hall->name_en,
+                        'price' => $reservation->hall->price,
+                    ] : null,
+                    'event' => $reservation->event ? [
+                        'id' => $reservation->event->id,
+                        'name_ar' => $reservation->event->name_ar,
+                        'name_en' => $reservation->event->name_en,
+                    ] : null,
+                    'services' => $servicesDetails,
+                    'total_price' => $totalPrice,
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error in getReservationSummary: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'حدث خطأ أثناء جلب ملخص الحجز.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+}
+
     // * متاح فقط للحجوزات المعلقة أو خلال 24 ساعة من الحجز.
-
-    public function updateReservation(Request $request, $reservationId)
+public function updateReservation(Request $request, $reservationId)
     {
         try {
             $user = auth()->user();
@@ -456,11 +489,9 @@ class ReservationController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }
+}
 
-// إلغاء الحجز.
     // * متاح فقط للحجوزات المعلقة أو خلال 24 ساعة من الحجز.
- 
     public function cancelReservation($reservationId)
     {
         try {
@@ -501,8 +532,6 @@ class ReservationController extends Controller
         }
     }
 
-//عرض جميع حجوزات المستخدم.
-
     public function getUserReservations()
     {
         try {
@@ -541,19 +570,39 @@ class ReservationController extends Controller
         }
     }
 
-   // دالة مساعدة لحساب السعر الإجمالي للحجز
     private function calculateFinalPrice(Reservation $reservation)
     {
         $totalPrice = 0;
+
+        // 1. سعر القاعة
         if ($reservation->hall) {
             $totalPrice += $reservation->hall->price;
         }
-        if ($reservation->reservationServices) {
-            foreach ($reservation->reservationServices as $item) {
-                $itemTotalPrice = $item->quantity * $item->unit_price;
-                $totalPrice += $itemTotalPrice;
+
+        // 2. أسعار الخدمات المضافة للحجز (طعام، أغاني محددة، إلخ)
+        $reservation->load('reservationServices'); // تأكد من تحميل العلاقات
+        foreach ($reservation->reservationServices as $item) {
+            $totalPrice += $item->quantity * $item->unit_price;
+        }
+
+        // 3. أسعار المنسقين المعينين (مصورين، مغنيين)
+        $reservation->load('coordinatorAssignments.coordinator'); // تأكد من تحميل العلاقات
+        foreach ($reservation->coordinatorAssignments as $assignment) {
+            // تأكد من أن total_cost تم حسابه وتخزينه عند التعيين
+            $totalPrice += $assignment->total_cost ?? 0;
+        }
+
+        // 4. أسعار الزينة (FlowerPlacement)
+        $reservation->load('flowerPlacements.flower'); // تأكد من تحميل العلاقات
+        foreach ($reservation->flowerPlacements as $placement) {
+            if ($placement->flower) {
+                $totalPrice += $placement->quantity * $placement->flower->price;
             }
         }
+
         return $totalPrice;
     }
+
 }
+
+    

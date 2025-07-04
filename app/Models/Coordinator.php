@@ -35,5 +35,8 @@ class Coordinator extends Model
     {
         return $this->hasMany(Reservation::class, 'coordinator_id');
     }
-
+    public function portfolios()
+    {
+        return $this->hasMany(CoordinatorPortfolio::class);
+    }
 }

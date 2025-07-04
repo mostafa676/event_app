@@ -13,11 +13,9 @@ return new class extends Migration
     {
         Schema::create('service_variants', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('service_id')->constrained()->onDelete('cascade');
+            $table->foreignId('service_category_id')->constrained()->onDelete('cascade');
             $table->string('name_ar');
             $table->string('name_en');
-            $table->string('color')->nullable();
-            $table->decimal('price', 10, 2);
             $table->text('description')->nullable();
             $table->string('image')->nullable();
             $table->timestamps();

@@ -94,7 +94,7 @@ class HallController extends Controller
             $validated = $request->validate([
                 'name_ar' => 'required|string|max:255',
                 'name_en' => 'required|string|max:255',
-                'event_type_id' => 'required|exists:event_types,id',
+                'place_type_id' => 'required|exists:place_types,id',
                 'location_ar' => 'required|string|max:255',
                 'location_en' => 'required|string|max:255',
                 'capacity' => 'required|integer|min:1',
@@ -106,7 +106,7 @@ class HallController extends Controller
                 'user_id' => auth()->id(),
                 'name_ar' => $validated['name_ar'],
                 'name_en' => $validated['name_en'],
-                'event_type_id' => $validated['event_type_id'],
+                'place_type_id' => $validated['place_type_id'],
                 'location_ar' => $validated['location_ar'],
                 'location_en' => $validated['location_en'],
                 'capacity' => $validated['capacity'],

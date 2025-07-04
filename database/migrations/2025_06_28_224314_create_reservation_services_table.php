@@ -19,6 +19,9 @@ return new class extends Migration {
             $table->foreignId('song_id')->nullable()->constrained('songs')->onDelete('set null');
             $table->string('custom_song_title')->nullable();
             $table->string('custom_song_artist')->nullable();
+            $table->string('location')->nullable();
+            $table->string('color')->nullable();
+
             $table->timestamps();
         });
     }

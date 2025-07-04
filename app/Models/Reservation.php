@@ -13,7 +13,7 @@ class Reservation extends Model
     protected $fillable = [
         'user_id', 'hall_id', 'event_type_id',
         'reservation_date', 'start_time', 'end_time', 'status', 'home_address',
-        'total_price', 'discount_code_id', 'discount_amount'
+        'total_price', 'discount_code_id', 'discount_amount' ,'coordinator_id'
     ];
     
  protected $casts = [
@@ -45,6 +45,11 @@ public function reservationServices()
 {
     return $this->hasMany(\App\Models\ReservationService::class, 'reservation_id');
 }
+
+public function songRequests()
+    {
+        return $this->hasMany(CustomSongRequest::class);
+    }
 
 }
 

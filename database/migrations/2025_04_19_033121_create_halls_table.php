@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('image_2')->nullable();
             $table->string('image_3')->nullable();
             $table->foreignId('event_type_id')->constrained()->onDelete('cascade');
+            $table->foreignId('place_type_id')->constrained()->onDelete('cascade');
             $table->timestamps();
             });
     }

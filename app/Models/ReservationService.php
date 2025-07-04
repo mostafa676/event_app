@@ -10,8 +10,15 @@ class ReservationService extends Model
         'reservation_id',
         'service_id',
         'service_variant_id',
+        'coordinator_id',
         'quantity',
-        'unit_price'
+        'unit_price',
+        'song_id',
+        'custom_song_title',
+        'custom_song_artist',
+        'location',
+        'color',
+
     ];
 
     public function reservation()
@@ -28,5 +35,13 @@ class ReservationService extends Model
     {
         return $this->belongsTo(ServiceVariant::class, 'service_variant_id');
     }
-    
+    public function coordinator()
+    {
+        return $this->belongsTo(Coordinator::class);
+    }
+
+    public function song()
+    {
+        return $this->belongsTo(Song::class);
+    }
 }
