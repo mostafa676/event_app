@@ -145,9 +145,10 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
         Route::put('/{id}', [HallOwnerCoordinatorController::class, 'update']); //done 
         Route::delete('/{id}', [HallOwnerCoordinatorController::class, 'destroy']); //done حذف منسق
     });
+ // مسارات الحجوزات لمالك الصالة 
+        Route::get('/reservations', [HallOwnerReservationController::class, 'getMyHallReservations']);
 
-
-});
+});;
 
 // =====================================================================================================
 // مسارات المنسق (Coordinator) - تتطلب مصادقة ودور 'coordinator' (لشام)
