@@ -10,7 +10,7 @@ class Flower extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['decoration_type_id', 'name_ar', 'name_en','color' ,'price'];
+    protected $fillable = ['decoration_type_id', 'name_ar', 'name_en','color' ,'price','image'];
 
     public function decorationType()
     {

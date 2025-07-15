@@ -12,7 +12,6 @@ use Illuminate\Validation\ValidationException;
 
 class HallController extends Controller
 {
-
     private function storeImages(?array $files): array
     {
         $paths = [];
@@ -26,7 +25,7 @@ class HallController extends Controller
         }
         return $paths;
     }
-
+    
     private function deleteOldImages(Hall $hall, array $imageColumns)
     {
         foreach ($imageColumns as $column) {

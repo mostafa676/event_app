@@ -1,11 +1,14 @@
 <?php
 
-namespace App\Http\Controllers\HallOwner; // Namespace الصحيح
-
+namespace App\Http\Controllers\HallOwner;
 use App\Http\Controllers\Controller;
-use App\Models\Hall; // لاستخدام Hall model
-use App\Models\Service; // لاستخدام Service model
-use App\Models\ServiceVariant; // لاستخدام ServiceVariant model
+use App\Models\DecorationType;
+use App\Models\Flower;
+use App\Models\Hall;
+use App\Models\Service;
+use App\Models\ServiceCategory;
+use App\Models\ServiceType;
+use App\Models\ServiceVariant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -27,6 +30,245 @@ class ServiceController extends Controller
             Storage::disk('public')->delete($path);
         }
     }
+
+    public function storeService(Request $request)
+{
+    $request->validate([
+        'name_ar' => 'required|string',
+        'name_en' => 'required|string',
+    ]);
+    $service = Service::create($request->only('name_ar', 'name_en'));
+    return response()->json([
+        'status' => true,
+        'message' => 'تم إنشاء الخدمة بنجاح.',
+        'service' => $service
+    ]);
+    }
+
+    public function storeFoodCategory(Request $request)
+{
+    $request->validate([
+        'service_id' => 'required|exists:services,id',
+        'name_ar' => 'required|string',
+        'name_en' => 'required|string',
+    ]);
+
+    $category = ServiceCategory::create($request->only('service_id','name_ar', 'name_en'));
+
+    return response()->json([
+        'status' => true,
+        'message' => 'تم إنشاء صنف الطعام.',
+        'category' => $category
+    ]);
+    }
+
+    public function storeFoodVariants (Request $request)
+{
+    $request->validate([
+        'service_category_id' => 'required|exists:service_categories,id',
+        'name_ar' => 'required|string',
+        'name_en' => 'required|string',
+        'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+    ]);
+
+    if ($request->hasFile('image')) {
+    $request['image'] = $request->file('image')->store('food_variants', 'public');
+}
+
+    $variant = ServiceVariant::create($request->only('service_category_id','name_ar', 'name_en' , 'image'));
+
+    return response()->json([
+        'status' => true,
+        'message' => 'تم إنشاء نوع الطعام.',
+        'category' => $variant
+    ]);
+    }
+
+    public function storeFoodTypes (Request $request)
+{
+    $request->validate([
+        'service_variant_id' => 'required|exists:service_variants,id',
+        'name_ar' => 'required|string',
+        'name_en' => 'required|string',
+        'price' => 'required|numeric|min:0',
+        'description' => 'nullable|string|max:1000',
+        'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+
+    ]);
+            if ($request->hasFile('image')) {
+                $request['image'] = $this->storeImage($request->file('image'));
+            }
+    $type = ServiceType::create($request->only( 'service_variant_id' ,'name_ar', 'name_en' , 'price','description' ,'image'));
+
+    return response()->json([
+        'status' => true,
+        'message' => 'تم إنشاء الطعام.',
+        'category' => $type
+    ]);
+    }
+
+    public function storeDecorationType(Request $request)
+    {
+    $request->validate([
+        'service_id' => 'required|exists:services,id',
+        'name_ar' => 'required|string',
+        'name_en' => 'required|string',
+    ]);
+
+    $type = DecorationType::create($request->only('service_id','name_ar', 'name_en'));
+
+    return response()->json([
+        'status' => true,
+        'message' => 'تمت إضافة نوع الزينة.',
+        'type' => $type
+    ]);
+    }
+
+    public function storeFlower(Request $request)
+{
+    $request->validate([
+        'decoration_type_id' => 'required|exists:decoration_types,id',
+        'name_ar' => 'required|string',
+        'name_en' => 'required|string',
+        'color' => 'required|string|max:50',
+        'price' => 'required|numeric|min:0',
+        'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+    ]);
+
+    $data = $request->only('decoration_type_id', 'name_ar', 'name_en','color','price','image');
+
+    if ($request->hasFile('image')) {
+        $data['image'] = $request->file('image')->store('flowers', 'public');
+    }
+
+    $flower = Flower::create($data);
+
+    return response()->json([
+        'status' => true,
+        'message' => 'تمت إضافة الزهرة.',
+        'flower' => $flower
+    ]);
+    }
+
+public function deleteService($id)
+{
+    try {
+        $service = Service::findOrFail($id);
+        $service->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم حذف الخدمة بنجاح.',
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Error deleting service: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل حذف الخدمة.',
+        ], 500);
+    }
+}
+
+public function deleteFoodCategory($id)
+{
+    try {
+        $category = ServiceCategory::findOrFail($id);
+        $category->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم حذف صنف الطعام.',
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Error deleting food category: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل حذف الصنف.',
+        ], 500);
+    }
+}
+
+public function deleteFoodVariant($id)
+{
+    try {
+        $variant = ServiceVariant::findOrFail($id);
+        $variant->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم حذف نوع الطعام.',
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Error deleting food variant: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل حذف النوع.',
+        ], 500);
+    }
+}
+
+public function deleteFoodType($id)
+{
+    try {
+        $type = ServiceType::findOrFail($id);
+        $type->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم حذف عنصر الطعام.',
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Error deleting food type: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل حذف الطعام.',
+        ], 500);
+    }
+}
+
+public function deleteDecorationType($id)
+{
+    try {
+        $type = DecorationType::findOrFail($id);
+        $type->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم حذف نوع الزينة.',
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Error deleting decoration type: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل حذف نوع الزينة.',
+        ], 500);
+    }
+}
+
+public function deleteFlower($id)
+{
+    try {
+        $flower = Flower::findOrFail($id);
+
+        // حذف الصورة إن وجدت
+        if ($flower->image && Storage::disk('public')->exists($flower->image)) {
+            Storage::disk('public')->delete($flower->image);
+        }
+
+        $flower->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم حذف الزهرة.',
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Error deleting flower: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل حذف الزهرة.',
+        ], 500);
+    }
+}
 
     public function getHallServices($hallId)
     {
@@ -153,174 +395,4 @@ class ServiceController extends Controller
         }
     }
 
-    public function getServiceVariants($serviceId)
-    {
-        try {
-            $service = Service::where('id', $serviceId)
-                              ->whereHas('halls', function ($query) {
-                                  $query->where('user_id', auth()->id());
-                              })
-                              ->with('variants')
-                              ->first();
-            if (!$service) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'الخدمة غير موجودة أو غير مرتبطة بأي من صالاتك.',
-                ], 404);
-            }
-            if ($service->variants->isEmpty()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'لا توجد أنواع (variants) لهذه الخدمة حالياً.',
-                    'variants' => [],
-                ], 200);
-            }
-            return response()->json([
-                'status' => true,
-                'message' => 'تم جلب أنواع الخدمة بنجاح.',
-                'variants' => $service->variants,
-            ], 200);
-        } catch (\Exception $e) {
-            Log::error('Error fetching service variants for owner: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء جلب أنواع الخدمة.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    public function storeVariant(Request $request)
-    {
-        try {
-            $request->validate([
-                'service_id' => 'required|exists:services,id',
-                'name_ar' => 'required|string|max:255',
-                'name_en' => 'required|string|max:255',
-                'color' => 'nullable|string|max:50',
-                'price' => 'required|numeric|min:0',
-                'description' => 'nullable|string|max:1000',
-                'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            ]);
-            $service = Service::where('id', $request->service_id)
-                              ->whereHas('halls', function ($query) {
-                                  $query->where('user_id', auth()->id());
-                              })
-                              ->first();
-            if (!$service) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'الخدمة غير موجودة أو غير مرتبطة بأي من صالاتك، لا يمكن إضافة نوع لها.',
-                ], 403); // 403 Forbidden
-            }
-            $variantData = $request->only(['service_id', 'name_ar', 'name_en', 'color', 'price', 'description']);
-            if ($request->hasFile('image')) {
-                $variantData['image'] = $this->storeImage($request->file('image'));
-            }
-            $variant = ServiceVariant::create($variantData);
-            return response()->json([
-                'status' => true,
-                'message' => 'تم إضافة نوع الخدمة بنجاح.',
-                'variant' => $variant,
-            ], 201); // 201 Created
-        } catch (ValidationException $e) {
-            Log::error('Validation error storing service variant: ' . $e->getMessage(), ['errors' => $e->errors()]);
-            return response()->json([
-                'status' => false,
-                'message' => 'فشل التحقق من صحة البيانات.',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('Error storing service variant: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء إضافة نوع الخدمة.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    public function updateVariant(Request $request, $variantId)
-    {
-        try {
-            $variant = ServiceVariant::find($variantId);
-            if (!$variant) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'نوع الخدمة الفرعي غير موجود.',
-                ], 404);
-            }
-            if (!$variant->service || !$variant->service->halls()->where('user_id', auth()->id())->exists()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'لا تملك صلاحية تعديل نوع الخدمة هذا.',
-                ], 403); // 403 Forbidden
-            }
-            $request->validate([
-                'name_ar' => 'required|string|max:255',
-                'name_en' => 'required|string|max:255',
-                'color' => 'nullable|string|max:50',
-                'price' => 'required|numeric|min:0',
-                'description' => 'nullable|string|max:1000',
-                'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            ]);
-            $variantData = $request->only(['name_ar', 'name_en', 'color', 'price', 'description']);
-            if ($request->hasFile('image')) {
-                $this->deleteOldImage($variant->image); // حذف الصورة القديمة
-                $variantData['image'] = $this->storeImage($request->file('image'));
-            }
-            $variant->update($variantData);
-            return response()->json([
-                'status' => true,
-                'message' => 'تم تحديث نوع الخدمة بنجاح.',
-                'variant' => $variant,
-            ], 200);
-        } catch (ValidationException $e) {
-            Log::error('Validation error updating service variant: ' . $e->getMessage(), ['errors' => $e->errors()]);
-            return response()->json([
-                'status' => false,
-                'message' => 'فشل التحقق من صحة البيانات.',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('Error updating service variant: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء تحديث نوع الخدمة.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    public function destroyVariant($variantId)
-    {
-        try {
-            $variant = ServiceVariant::find($variantId);
-            if (!$variant) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'نوع الخدمة الفرعي غير موجود.',
-                ], 404);
-            }
-            if (!$variant->service || !$variant->service->halls()->where('user_id', auth()->id())->exists()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'لا تملك صلاحية حذف نوع الخدمة هذا.',
-                ], 403); // 403 Forbidden
-            }
-            $this->deleteOldImage($variant->image); // حذف الصورة المرتبطة
-            $variant->delete();
-            return response()->json([
-                'status' => true,
-                'message' => 'تم حذف نوع الخدمة بنجاح.',
-            ], 200);
-        } catch (\Exception $e) {
-            Log::error('Error destroying service variant: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء حذف نوع الخدمة.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
 }

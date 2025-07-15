@@ -130,12 +130,20 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
         Route::get('/hall/{hallId}', [HallOwnerServiceController::class, 'getHallServices']); //done عرض الخدمات المرتبطة بصالة محددة      
         Route::post('/attach', [HallOwnerServiceController::class, 'attachService']); //done ربط خدمة بصالة
         Route::post('/detach', [HallOwnerServiceController::class, 'detachService']); //done  فصل خدمة عن صالة
+        Route::post('/Store', [HallOwnerServiceController::class, 'storeService']);
+        Route::post('/Sfood-categories', [HallOwnerServiceController::class, 'storeFoodCategory']);
+        Route::post('/Sservice-variants', [HallOwnerServiceController::class, 'storeFoodVariants']);
+        Route::post('/Sservice-variants', [HallOwnerServiceController::class, 'storeFoodTypes']);
+        Route::post('/Sdecoration-types', [HallOwnerServiceController::class, 'storeDecorationType']);
+        Route::post('/Sflowers', [HallOwnerServiceController::class, 'storeFlower']);
+        Route::delete('Dservice/{id}', [HallOwnerServiceController::class, 'deleteService']);
+        Route::delete('DdeleteFoodCategory/{id}', [HallOwnerServiceController::class, 'deleteFoodCategory']);
+        Route::delete('DdeleteFoodVariant/{id}', [HallOwnerServiceController::class, 'deleteFoodVariant']);
+        Route::delete('DdeleteFoodType/{id}', [HallOwnerServiceController::class, 'deleteFoodType']);
+        Route::delete('DDecorationType/{id}', [HallOwnerServiceController::class, 'deleteDecorationType']);
+        Route::delete('Dflower/{id}', [HallOwnerServiceController::class, 'deleteFlower']);
 
-        Route::get('/{serviceId}/variants', [HallOwnerServiceController::class, 'getServiceVariants']); //done عرض أنواع الخدمات الفرعية لخدمة
-        Route::post('/variants', [HallOwnerServiceController::class, 'storeVariant']); //done إضافة نوع خدمة فرعي
-        Route::put('/variants/{variantId}', [HallOwnerServiceController::class, 'updateVariant']); //done 
-        Route::delete('/variants/{variantId}', [HallOwnerServiceController::class, 'destroyVariant']); //done  حذف نوع خدمة فرعي
-    });
+        });
 
     // إدارة المنسقين بواسطة مالك الصالة
     Route::prefix('coordinators')->group(function () {
