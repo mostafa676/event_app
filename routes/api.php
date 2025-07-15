@@ -12,7 +12,7 @@ use App\Http\Controllers\HallOwner\HallController as HallOwnerHallController;
 use App\Http\Controllers\HallOwner\ServiceController as HallOwnerServiceController; 
 use App\Http\Controllers\HallOwner\CoordinatorController as HallOwnerCoordinatorController; 
 use App\Http\Controllers\HallOwner\ReservationController as HallOwnerReservationController; 
-
+use App\Http\Controllers\HallOwner\CoordinatorAssignmentController as HallOwnerCoordinatorAssignmentController;
 
 Route::post('/register', [AuthController::class, 'register']); // done
 Route::post('/login', [AuthController::class, 'login']);  // done
@@ -152,11 +152,12 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
         Route::post('/', [HallOwnerCoordinatorController::class, 'store']); //done إضافة منسق جديد
         Route::put('/{id}', [HallOwnerCoordinatorController::class, 'update']); //done 
         Route::delete('/{id}', [HallOwnerCoordinatorController::class, 'destroy']); //done حذف منسق
+        Route::post('/assignments', [HallOwnerCoordinatorAssignmentController::class, 'assignTask']);
+        
     });
- // مسارات الحجوزات لمالك الصالة 
-        Route::get('/reservations', [HallOwnerReservationController::class, 'getMyHallReservations']);
+       Route::get('/reservations', [HallOwnerReservationController::class, 'getMyHallReservations']);
 
-});;
+});
 
 // =====================================================================================================
 // مسارات المنسق (Coordinator) - تتطلب مصادقة ودور 'coordinator' (لشام)
