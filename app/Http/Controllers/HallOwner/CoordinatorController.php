@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Http\Controllers\HallOwner;
-
 use App\Http\Controllers\Controller;
 use App\Models\User; 
 use App\Models\Coordinator;
@@ -10,9 +9,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
+
 class CoordinatorController extends Controller
 {
-
     public function index()
     {
         try {
@@ -41,7 +40,7 @@ class CoordinatorController extends Controller
             ], 500);
         }
     }
-
+    
     public function show($id)
     {
         try {
@@ -81,8 +80,7 @@ class CoordinatorController extends Controller
                 'email' => 'required|string|email|max:255|unique:users,email',
                 'phone' => 'required|digits:10|unique:users,phone',
                 'password' => 'required|string|min:8|confirmed',
-                'specialization' => 'required|string|max:255', 
-                'hourly_rate' => 'nullable|numeric|min:0', 
+                'specialization' => 'required|string|max:255',
             ]);
             $user = User::create([
                 'name' => $validatedData['name'],
@@ -95,7 +93,6 @@ class CoordinatorController extends Controller
             'user_id' => $user->id,
             'hall_owner_id' => auth()->id(),
             'specialization' => $validatedData['specialization'],
-            'hourly_rate' => $validatedData['hourly_rate'],
             'coordinator_type_id' => $validatedData['coordinator_type_id'], 
         ]);
         DB::commit();
@@ -225,4 +222,5 @@ class CoordinatorController extends Controller
             ], 500);
         }
     }
+
 }

@@ -9,10 +9,15 @@ class DecorationType extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name_ar', 'name_en'];
+    protected $fillable = ['service_id', 'name_ar', 'name_en'];
 
     public function flowers()
     {
         return $this->hasMany(Flower::class);
     }
+        public function service()
+    {
+        return $this->belongsTo(Service::class);
+    }
+
 }
