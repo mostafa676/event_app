@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\HallOwner\ReseravtionController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\User\AuthController;
 use App\Http\Controllers\User\FavoriteController;
@@ -11,7 +12,7 @@ use App\Http\Controllers\Admin\HallOwnerController as AdminHallOwnerController;
 use App\Http\Controllers\HallOwner\HallController as HallOwnerHallController;
 use App\Http\Controllers\HallOwner\ServiceController as HallOwnerServiceController; 
 use App\Http\Controllers\HallOwner\CoordinatorController as HallOwnerCoordinatorController; 
-use App\Http\Controllers\HallOwner\ReservationController as HallOwnerReservationController; 
+use App\Http\Controllers\coordinator\CoordinatorController;
 
 
 Route::post('/register', [AuthController::class, 'register']); // done
@@ -152,13 +153,21 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
         Route::post('/', [HallOwnerCoordinatorController::class, 'store']); //done إضافة منسق جديد
         Route::put('/{id}', [HallOwnerCoordinatorController::class, 'update']); //done 
         Route::delete('/{id}', [HallOwnerCoordinatorController::class, 'destroy']); //done حذف منسق
-    });
+         Route::post('/assign/{reservationId}', [ReseravtionController::class, 'assignCoordinatorsToReservation']);
 
-
-});
+    }); 
+        });
 
 // =====================================================================================================
 // مسارات المنسق (Coordinator) - تتطلب مصادقة ودور 'coordinator' (لشام)
 // =====================================================================================================
+
+
+
+Route::middleware('auth:sanctum')->prefix('coordinator')->group(function () {
+    Route::get('/assignments/pending', [CoordinatorController::class, 'pendingAssignments']);
+    Route::get('/assignments/non-pending', [CoordinatorController::class, 'nonPendingAssignments']);
+    Route::post('/assignments/{id}/accept', [CoordinatorController::class, 'acceptAssignment']);
+    Route::post('/assignments/{id}/reject', [CoordinatorController::class, 'rejectAssignment']);});
 
 

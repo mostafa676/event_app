@@ -173,7 +173,7 @@ public function addassignDJ(Request $request)
     $request->validate([
         'reservation_id' => 'required|exists:reservation,id',
         'coordinator_id' => 'required|exists:coordinators,id',
-        'service_id' => 'required|exists:services,id', // يجب أن يكون موسيقى
+        'service_id' => 'required|exists:services,id',
         'unit_price' => 'required|numeric|min:0',
         'song_ids' => 'nullable|array',
         'song_ids.*' => 'exists:songs,id',
@@ -270,7 +270,6 @@ public function addFlowerDecoration(Request $request)
         ], 500);
     }
 }
-
 
 public function confirmReservation(Request $request)
     {

@@ -26,10 +26,11 @@ class Coordinator extends Model
         return $this->belongsTo(User::class, 'hall_owner_id');
     }
 
-    public function coordinatorAssignments()
-    {
-        return $this->hasMany(CoordinatorAssignment::class, 'coordinator_id');
-    }
+    public function assignments()
+{
+    return $this->hasMany(CoordinatorAssignment::class, 'coordinator_id');
+}
+
 
       public function reservations()
     {
