@@ -101,25 +101,25 @@ class AuthController extends Controller
         }
     }
 
-    public function logout(Request $request)
-{
-    try {
-        $request->user()->currentAccessToken()->delete();
+//     public function logout(Request $request)
+// {
+//     try {
+//         $request->user()->currentAccessToken()->delete();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'تم تسجيل الخروج بنجاح'
-        ], 200);
+//         return response()->json([
+//             'status' => true,
+//             'message' => 'تم تسجيل الخروج بنجاح'
+//         ], 200);
 
-    } catch (\Exception $e) {
-        \Log::error('Error during logout: ' . $e->getMessage());
-        return response()->json([
-            'status' => false,
-            'message' => 'حدث خطأ أثناء عملية تسجيل الخروج.',
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-}
+//     } catch (\Exception $e) {
+//         \Log::error('Error during logout: ' . $e->getMessage());
+//         return response()->json([
+//             'status' => false,
+//             'message' => 'حدث خطأ أثناء عملية تسجيل الخروج.',
+//             'error' => $e->getMessage(),
+//         ], 500);
+//     }
+// }
 
     public function uploadImage(Request $request)
     {
