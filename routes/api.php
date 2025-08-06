@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\HallOwner\ReseravtionController;
+use App\Http\Controllers\User\HallController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\User\AuthController;
 use App\Http\Controllers\User\FavoriteController;
@@ -13,6 +14,8 @@ use App\Http\Controllers\HallOwner\HallController as HallOwnerHallController;
 use App\Http\Controllers\HallOwner\ServiceController as HallOwnerServiceController; 
 use App\Http\Controllers\HallOwner\CoordinatorController as HallOwnerCoordinatorController; 
 use App\Http\Controllers\coordinator\CoordinatorController;
+use Illuminate\Http\Request;
+
 
 
 Route::post('/register', [AuthController::class, 'register']); // done
@@ -48,7 +51,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('halls')->group(function () {
     Route::get('/{hallId}', [UserHallController::class, 'show']); // done
     Route::get('services/{hallId}', [UserHallController::class, 'getServicesByHall']); // done
-    });
+    Route::post('/ratehall/{hallId}', [HallController::class, 'rateHall']); // done    
+    Route::get('/{hallId}/available-times', [HallController::class, 'getAvailableTimes']);
+});
 
 // الخدمات 
     Route::prefix('services')->group(function () {
@@ -124,7 +129,14 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
         Route::put('/{id}', [HallOwnerHallController::class, 'update']); //done
         Route::delete('/{id}', [HallOwnerHallController::class, 'destroy']); // done 
         Route::post('/{hallId}/schedule', [HallOwnerHallController::class, 'updateHallSchedule']);  // done
+       
     });
+    Route::get('/reservations', [ReseravtionController::class, 'getReservationsForHallOwner']);
+    Route::get('/reservations/{id}', [ ReseravtionController::class, 'show']);
+    Route::get('/reservations/{reservationId}/tasks/{status}', [ReseravtionController::class, 'getTasksByReservationAndStatus']);
+    Route::get('/reservations/incomplete/ss', [ReseravtionController::class, 'getOrganizedIncompleteReservations']);
+    Route::get('/tasks/{id}', [ReseravtionController::class, 'showTask']);
+
 
     // إدارة الخدمات وأنواعها الفرعية بواسطة مالك الصالة
     Route::prefix('services')->group(function () {
@@ -143,7 +155,6 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
         Route::delete('DdeleteFoodType/{id}', [HallOwnerServiceController::class, 'deleteFoodType']);
         Route::delete('DDecorationType/{id}', [HallOwnerServiceController::class, 'deleteDecorationType']);
         Route::delete('Dflower/{id}', [HallOwnerServiceController::class, 'deleteFlower']);
-
         });
 
     // إدارة المنسقين بواسطة مالك الصالة
@@ -153,8 +164,8 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
         Route::post('/', [HallOwnerCoordinatorController::class, 'store']); //done إضافة منسق جديد
         Route::put('/{id}', [HallOwnerCoordinatorController::class, 'update']); //done 
         Route::delete('/{id}', [HallOwnerCoordinatorController::class, 'destroy']); //done حذف منسق
-         Route::post('/assign/{reservationId}', [ReseravtionController::class, 'assignCoordinatorsToReservation']);
-
+        Route::post('/assign/{reservationId}', [ReseravtionController::class, 'assignCoordinatorsToReservation']);
+        Route::get('/type/{typeId}', [App\Http\Controllers\HallOwner\CoordinatorController::class, 'getByType']);
     }); 
         });
 
@@ -163,11 +174,16 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
 // =====================================================================================================
 
 
-
-Route::middleware('auth:sanctum')->prefix('coordinator')->group(function () {
+Route::prefix('coordinator')->middleware(['auth:sanctum', 'coordinator'])->group(function () {
     Route::get('/assignments/pending', [CoordinatorController::class, 'pendingAssignments']);
     Route::get('/assignments/non-pending', [CoordinatorController::class, 'nonPendingAssignments']);
     Route::post('/assignments/{id}/accept', [CoordinatorController::class, 'acceptAssignment']);
-    Route::post('/assignments/{id}/reject', [CoordinatorController::class, 'rejectAssignment']);});
+    Route::post('/assignments/{id}/reject', [CoordinatorController::class, 'rejectAssignment']);
+});
 
+
+
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user(); // ✅ هذا هو الصحيح
+});
 

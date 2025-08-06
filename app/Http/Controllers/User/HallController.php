@@ -10,6 +10,7 @@ use App\Models\Flower;
 use App\Models\FlowerPlacement;
 use App\Models\Hall;
 use App\Models\EventType;
+use App\Models\HallRating;
 use App\Models\PlaceType;
 use App\Models\Service;
 use App\Models\ServiceCategory;
@@ -254,7 +255,6 @@ public function getVariantTypes($variantId)
     }
 }
 
-
 public function getMusicServiceDetails($hallOwnerId)
     {
         try {
@@ -374,6 +374,83 @@ public function getFlowersByDecorationType($decorationTypeId)
             'error' => $e->getMessage(),
         ], 500);
     }   
+}
+
+public function rateHall(Request $request, $hallId)
+{
+    $request->validate([
+        'stars' => 'required|integer|min:1|max:5',
+        'review' => 'nullable|string',
+    ]);
+
+    $user = auth()->user();
+
+    $rating = HallRating::updateOrCreate(
+        ['hall_id' => $hallId, 'user_id' => $user->id],
+        ['stars' => $request->stars, 'review' => $request->review]
+    );
+
+    // تحديث متوسط التقييم في جدول halls
+    $hall = Hall::with('ratings')->findOrFail($hallId);
+
+    $average = $hall->ratings()->avg('stars');
+    $count = $hall->ratings()->count();
+
+    $hall->update([
+        'average_rating' => $average,
+        'rating_count' => $count,
+    ]);
+
+    return response()->json([
+        'status' => true,
+        'message' => 'تم حفظ التقييم بنجاح.',
+        'rating' => $rating,
+        'average_rating' => $average,
+    ]);
+}
+
+public function getAvailableTimes($hallId)
+{
+    $hall = Hall::find($hallId);
+
+    if (!$hall) {
+        return response()->json([
+            'status' => false,
+            'message' => 'القاعة غير موجودة.',
+        ], 404);
+    }
+
+    $schedules = $hall->schedules()
+        ->where('is_available', true)
+        ->get();
+
+    // جلب الأوقات المحجوزة من جدول reservations
+    $reservedTimes = $hall->reservations()
+        ->select('reservation_date', 'start_time', 'end_time')
+        ->get();
+
+    // تصفية الأوقات المتاحة بناءً على المحجوزة
+    $available = $schedules->filter(function ($slot) use ($reservedTimes) {
+        foreach ($reservedTimes as $reserved) {
+            // تحويل التاريخ إلى اسم يوم مثل Monday
+            $reservedDay = \Carbon\Carbon::parse($reserved->reservation_date)->format('l');
+
+            if (
+                $reservedDay === $slot->day_of_week &&
+                $reserved->start_time == $slot->start_time &&
+                $reserved->end_time == $slot->end_time
+            ) {
+                return false; // هذا التوقيت محجوز
+            }
+        }
+        return true; // هذا التوقيت متاح
+    })->values(); // reset index
+
+    return response()->json([
+        'status' => true,
+        'message' => 'تم جلب الأوقات المتاحة بنجاح.',
+        'data' => $available,
+    ]);
 }
 
  

@@ -10,11 +10,14 @@ return new class extends Migration {
     {
         Schema::create('reservation_services', function (Blueprint $table) {
     $table->id();
-    $table->foreignId('reservation_id')->constrained('reservation')->onDelete('cascade');
+    $table->foreignId('reservation_id')->constrained()->onDelete('cascade');
     $table->foreignId('service_id')->constrained()->onDelete('cascade');
     $table->foreignId('service_category_id')->nullable()->constrained('service_categories')->onDelete('set null');
     $table->integer('quantity');
     $table->decimal('unit_price', 10, 2);
+        $table->foreignId('coordinator_id')->constrained()->onDelete('cascade');
+
+
     $table->timestamps();
 
 });

@@ -80,7 +80,6 @@ class CoordinatorController extends Controller
                 'email' => 'required|string|email|max:255|unique:users,email',
                 'phone' => 'required|digits:10|unique:users,phone',
                 'password' => 'required|string|min:8|confirmed',
-                'specialization' => 'required|string|max:255',
             ]);
             $user = User::create([
                 'name' => $validatedData['name'],
@@ -92,7 +91,6 @@ class CoordinatorController extends Controller
              $coordinator = Coordinator::create([
             'user_id' => $user->id,
             'hall_owner_id' => auth()->id(),
-            'specialization' => $validatedData['specialization'],
             'coordinator_type_id' => $validatedData['coordinator_type_id'], 
         ]);
         DB::commit();
@@ -222,5 +220,39 @@ class CoordinatorController extends Controller
             ], 500);
         }
     }
+
+    public function getByType($typeId)
+{
+    try {
+        $hallOwnerId = auth()->id();
+
+        $coordinators = Coordinator::where('hall_owner_id', $hallOwnerId)
+            ->where('coordinator_type_id', $typeId)
+            ->with('user:id,name,email,phone')
+            ->get();
+
+        if ($coordinators->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'لا يوجد منسقون من هذا النوع.',
+                'coordinators' => [],
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم جلب المنسقين حسب النوع بنجاح.',
+            'coordinators' => $coordinators,
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Error fetching coordinators by type: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء جلب المنسقين.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
 
 }

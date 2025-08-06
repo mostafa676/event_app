@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Reservation extends Model
 {
 
-    protected $table = 'reservation';
+    protected $table = 'reservations';
     
     protected $fillable = [
         'user_id', 'hall_id', 'event_type_id',
@@ -50,6 +50,11 @@ public function songRequests()
     {
         return $this->hasMany(CustomSongRequest::class);
     }
+
+    public function tasks()
+{
+    return $this->hasMany(CoordinatorAssignment::class, 'reservation_id');
+}
 
 }
 

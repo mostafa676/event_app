@@ -13,7 +13,7 @@ return new class extends Migration
     {
 Schema::create('custom_song_requests', function (Blueprint $table) {
     $table->id();
-    $table->foreignId('reservation_id')->constrained('reservation')->onDelete('cascade');
+    $table->foreignId('reservation_id')->constrained()->onDelete('cascade');
     $table->string('title');
     $table->string('artist');
     $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');

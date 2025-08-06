@@ -70,7 +70,7 @@ public function acceptAssignment($assignmentId)
         ->where('coordinator_id', Auth::user()->coordinatorProfile->id)
         ->firstOrFail();
 
-    $assignment->status = 'completed';
+    $assignment->status = 'accepted';
     $assignment->save();
 
     return response()->json([

@@ -24,7 +24,7 @@ return new class extends Migration
         $table->timestamps();
 
         // تعريف المفاتيح الخارجية بشكل منفصل
-        $table->foreign('reservation_id')->references('id')->on('reservation')->onDelete('cascade');
+        $table->foreign('reservation_id')->references('id')->on('reservations')->onDelete('cascade');
         $table->foreign('service_id')->references('id')->on('services')->onDelete('cascade');
         $table->foreign('coordinator_id')->references('id')->on('coordinators')->onDelete('cascade');
         $table->foreign('assigned_by')->references('id')->on('users')->onDelete('cascade');

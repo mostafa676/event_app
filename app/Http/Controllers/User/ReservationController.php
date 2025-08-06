@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\Flower;
 use App\Models\Hall;
+use App\Models\HallSchedule;
 use App\Models\Service;
 use App\Models\ServiceVariant;
 use App\Models\Reservation; // نموذج الحجز
@@ -20,88 +21,109 @@ use App\Models\ServiceType;
 
 class ReservationController extends Controller
 {
-    public function selectHall(Request $request)
-    {
-        try {
-            $request->validate([
-                'hall_id' => 'required|exists:halls,id',
-                'reservation_date' => 'required|date_format:Y-m-d',
-                'start_time' => 'required|date_format:H:i',
-                'end_time' => 'required|date_format:H:i|after:start_time',
-            ]);
+  public function selectHall(Request $request)
+{
+    try {
+        $request->validate([
+            'hall_id' => 'required|exists:halls,id',
+            'reservation_date' => 'required|date_format:Y-m-d',
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i|after:start_time',
+        ]);
 
-            $hallId = $request->hall_id;
-            $reservationDate = $request->reservation_date;
-            $startTime = $request->start_time;
-            $endTime = $request->end_time;
-            $conflict = Reservation::where('hall_id', $hallId)
-                ->where('reservation_date', $reservationDate)
-                ->whereIn('status', ['confirmed', 'pending'])
-                 ->where(function ($query) use ($startTime, $endTime) {
-                    $query->where(function ($q) use ($startTime, $endTime) {
-                        $q->where('start_time', '<', $endTime)
-                            ->where('end_time', '>', $startTime);
-                    });
-                })
-                ->exists();
+        $hallId = $request->hall_id;
+        $reservationDate = $request->reservation_date;
+        $startTime = $request->start_time;
+        $endTime = $request->end_time;
 
-            if ($conflict) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'عذراً، هذه الفترة الزمنية محجوزة بالفعل للصالة المطلوبة أو هناك حجز معلق.',
-                ], 400);
-            }
-           $reservation = Reservation::firstOrCreate(
-                ['user_id' => auth()->id(), 'status' => 'pending'],
-                [
-                    'hall_id' => $hallId,
-                    'reservation_date' => $reservationDate,
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'event_type_id' => Hall::find($hallId)->event_type_id, 
-                        'status' => 'pending',
-                    'total_price' => 0
-                ]
-            );
-            if (!$reservation->wasRecentlyCreated) {
-                $reservation->update([
-                    'hall_id' => $hallId,
-                    'reservation_date' => $reservationDate,
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'event_type_id' => Hall::find($hallId)->event_type_id,
-                ]);
-                $reservation->reservationServices()->delete();
-            }
+        // ✅ 1. تحقق من جدول المواعيد للصالة
+        $dayOfWeek = Carbon::parse($reservationDate)->format('l'); // Monday, Tuesday, etc.
 
-            return response()->json([
-                'status' => true,
-                'message' => 'تم اختيار الصالة وتحديث الحجز المؤقت بنجاح.',
-                'reservation_id' => $reservation->id,
-                'reservation_status' => $reservation->status,
-            ], 200);
+        $scheduleAvailable = HallSchedule::where('hall_id', $hallId)
+            ->where('day_of_week', $dayOfWeek)
+            ->where('is_available', true)
+            ->where('start_time', '<=', $startTime)
+            ->where('end_time', '>=', $endTime)
+            ->exists();
 
-        } catch (ValidationException $e) {
-            Log::error('Validation error in selectHall: ' . $e->getMessage(), ['errors' => $e->errors()]);
+        if (!$scheduleAvailable) {
             return response()->json([
                 'status' => false,
-                'message' => 'فشل التحقق من صحة البيانات.',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('Error in selectHall: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء اختيار الصالة.',
-                'error' => $e->getMessage(),
-            ], 500);
+                'message' => 'الوقت المختار غير متاح في جدول مواعيد الصالة لهذا اليوم.',
+            ], 400);
         }
+
+        // ✅ 2. تحقق من عدم وجود تعارض بالحجوزات
+        $conflict = Reservation::where('hall_id', $hallId)
+            ->where('reservation_date', $reservationDate)
+            ->whereIn('status', ['confirmed', 'pending'])
+            ->where(function ($query) use ($startTime, $endTime) {
+                $query->where('start_time', '<', $endTime)
+                      ->where('end_time', '>', $startTime);
+            })
+            ->exists();
+
+        if ($conflict) {
+            return response()->json([
+                'status' => false,
+                'message' => 'عذراً، هذه الفترة الزمنية محجوزة بالفعل للصالة المطلوبة أو هناك حجز معلق.',
+            ], 400);
+        }
+
+        // ✅ 3. إنشاء أو تحديث الحجز المؤقت
+        $reservation = Reservation::firstOrCreate(
+            ['user_id' => auth()->id(), 'status' => 'pending'],
+            [
+                'hall_id' => $hallId,
+                'reservation_date' => $reservationDate,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'event_type_id' => Hall::find($hallId)->event_type_id,
+                'status' => 'pending',
+                'total_price' => 0
+            ]
+        );
+
+        if (!$reservation->wasRecentlyCreated) {
+            $reservation->update([
+                'hall_id' => $hallId,
+                'reservation_date' => $reservationDate,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'event_type_id' => Hall::find($hallId)->event_type_id,
+            ]);
+            $reservation->reservationServices()->delete();
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم اختيار الصالة وتحديث الحجز المؤقت بنجاح.',
+            'reservation_id' => $reservation->id,
+            'reservation_status' => $reservation->status,
+        ], 200);
+
+    } catch (ValidationException $e) {
+        Log::error('Validation error in selectHall: ' . $e->getMessage(), ['errors' => $e->errors()]);
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل التحقق من صحة البيانات.',
+            'errors' => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        Log::error('Error in selectHall: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء اختيار الصالة.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
+
 
 public function addorderFood(Request $request)
 {
     $request->validate([
-        'reservation_id' => 'required|exists:reservation,id',
+        'reservation_id' => 'required|exists:reservations,id',
         'items' => 'required|array',
         'items.*.service_type_id' => 'required|exists:service_types,id',
         'items.*.quantity' => 'required|integer|min:1',
@@ -114,7 +136,7 @@ public function addorderFood(Request $request)
             ReservationService::create([
                 'reservation_id' => $request->reservation_id,
                 'service_id' => $type->variant->category->service_id,
-                'service_variant_id' => $type->service_variant_id,
+                'service_category_id' => $type->service_category_id,
                 'quantity' => $item['quantity'],
                 'unit_price' => $type->price,
             ]);
@@ -137,7 +159,7 @@ public function addorderFood(Request $request)
 public function addassignPhotographer(Request $request)
 {
     $request->validate([
-        'reservation_id' => 'required|exists:reservation,id',
+        'reservation_id' => 'required|exists:reservations,id',
         'coordinator_id' => 'required|exists:coordinators,id',
         'service_id' => 'required|exists:services,id', // يجب أن يكون تصوير
         'service_variant_id' => 'nullable|exists:service_variants,id',

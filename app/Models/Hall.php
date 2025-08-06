@@ -13,7 +13,7 @@ class Hall extends Model
     protected $fillable = [
          'user_id', 'event_type_id', 'name_ar', 'name_en',
         'location_ar', 'location_en', 'capacity', 'price',
-        'image_1', 'image_2', 'image_3','place_type_id'
+        'image_1', 'image_2', 'image_3', 'image_4', 'image_5', 'image_6','place_type_id'
     ];
 
     public function owner()
@@ -30,6 +30,11 @@ class Hall extends Model
     {
         return $this->belongsToMany(Service::class, 'hall_service');
     }
+
+    public function ratings()
+{
+    return $this->hasMany(HallRating::class);
+}
 
     public function schedules()
     {

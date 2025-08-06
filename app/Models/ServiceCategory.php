@@ -9,7 +9,7 @@ class ServiceCategory extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['service_id', 'name_ar', 'name_en'];
+    protected $fillable = ['service_id', 'name_ar','image_1', 'name_en'];
 
     public function service()
     {

@@ -9,7 +9,7 @@ class ReservationService extends Model
     protected $fillable = [
         'reservation_id',
         'service_id',
-        'service_variant_id',
+        'service_category_id',
         'coordinator_id',
         'quantity',
         'unit_price',
