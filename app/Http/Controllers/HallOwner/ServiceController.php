@@ -45,15 +45,20 @@ class ServiceController extends Controller
     ]);
     }
 
-    public function storeFoodCategory(Request $request)
+public function storeFoodCategory(Request $request)
 {
     $request->validate([
         'service_id' => 'required|exists:services,id',
         'name_ar' => 'required|string',
         'name_en' => 'required|string',
+        'image_1' => 'required|image|mimes:jpeg,png,jpg|max:2048',
     ]);
+        
+    if ($request->hasFile('image')) {
+    $request['image'] = $request->file('image')->store('food_variants', 'public');
+}
 
-    $category = ServiceCategory::create($request->only('service_id','name_ar', 'name_en'));
+    $category = ServiceCategory::create($request->only('service_id','name_ar', 'name_en' , 'image_1'));
 
     return response()->json([
         'status' => true,
@@ -113,9 +118,15 @@ class ServiceController extends Controller
         'service_id' => 'required|exists:services,id',
         'name_ar' => 'required|string',
         'name_en' => 'required|string',
-    ]);
+        'image_1' => 'required|image|mimes:jpeg,png,jpg|max:2048',
 
-    $type = DecorationType::create($request->only('service_id','name_ar', 'name_en'));
+    ]);
+    
+    if ($request->hasFile('image')) {
+    $request['image'] = $request->file('image')->store('food_variants', 'public');
+}
+
+    $type = DecorationType::create($request->only('service_id','name_ar', 'name_en','image_1'));
 
     return response()->json([
         'status' => true,

@@ -66,8 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/{hallOwnerId}/photographers', [UserHallController::class, 'getPhotographers']); // done
     Route::get('/decorations/types', [UserHallController::class, 'getDecorationTypes']); //done 
     Route::get('/decorations/{decorationTypeId}/flowers', [UserHallController::class, 'getFlowersByDecorationType']); // done
-    Route::post('/decorations/flower-placement', [UserHallController::class, 'storeFlowerPlacement']); // done
-});
+    });
 
 
     // مسارات المفضلة للمستخدم
@@ -137,8 +136,18 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
     Route::get('/reservations/incomplete/ss', [ReseravtionController::class, 'getOrganizedIncompleteReservations']);
     Route::get('/tasks/{id}', [ReseravtionController::class, 'showTask']);
 
+    // إدارة المنسقين بواسطة مالك الصالة
+    Route::prefix('coordinators')->group(function () {
+        Route::get('/', [HallOwnerCoordinatorController::class, 'index']); //done عرض جميع المنسقين
+        Route::get('/{id}', [HallOwnerCoordinatorController::class, 'show']); //done عرض تفاصيل منسق
+        Route::post('/', [HallOwnerCoordinatorController::class, 'store']); //done إضافة منسق جديد
+        Route::put('/{id}', [HallOwnerCoordinatorController::class, 'update']); //done 
+        Route::delete('/{id}', [HallOwnerCoordinatorController::class, 'destroy']); //done حذف منسق
+        Route::post('/assign/{reservationId}', [ReseravtionController::class, 'assignCoordinatorsToReservation']);
+        Route::get('/type/{typeId}', [App\Http\Controllers\HallOwner\CoordinatorController::class, 'getByType']);
+    }); 
 
-    // إدارة الخدمات وأنواعها الفرعية بواسطة مالك الصالة
+      // إدارة الخدمات وأنواعها الفرعية بواسطة مالك الصالة
     Route::prefix('services')->group(function () {
         Route::get('/hall/{hallId}', [HallOwnerServiceController::class, 'getHallServices']); //done عرض الخدمات المرتبطة بصالة محددة      
         Route::post('/attach', [HallOwnerServiceController::class, 'attachService']); //done ربط خدمة بصالة
@@ -157,16 +166,6 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
         Route::delete('Dflower/{id}', [HallOwnerServiceController::class, 'deleteFlower']);
         });
 
-    // إدارة المنسقين بواسطة مالك الصالة
-    Route::prefix('coordinators')->group(function () {
-        Route::get('/', [HallOwnerCoordinatorController::class, 'index']); //done عرض جميع المنسقين
-        Route::get('/{id}', [HallOwnerCoordinatorController::class, 'show']); //done عرض تفاصيل منسق
-        Route::post('/', [HallOwnerCoordinatorController::class, 'store']); //done إضافة منسق جديد
-        Route::put('/{id}', [HallOwnerCoordinatorController::class, 'update']); //done 
-        Route::delete('/{id}', [HallOwnerCoordinatorController::class, 'destroy']); //done حذف منسق
-        Route::post('/assign/{reservationId}', [ReseravtionController::class, 'assignCoordinatorsToReservation']);
-        Route::get('/type/{typeId}', [App\Http\Controllers\HallOwner\CoordinatorController::class, 'getByType']);
-    }); 
         });
 
 // =====================================================================================================
