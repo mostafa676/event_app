@@ -43,7 +43,7 @@ class Reservation extends Model
 
 public function reservationServices()
 {
-    return $this->hasMany(\App\Models\ReservationService::class, 'reservation_id');
+    return $this->hasMany(ReservationService::class, 'reservation_id');
 }
 
 public function songRequests()
@@ -54,6 +54,16 @@ public function songRequests()
     public function tasks()
 {
     return $this->hasMany(CoordinatorAssignment::class, 'reservation_id');
+}
+
+public function coordinatorAssignments()
+{
+    return $this->hasMany(CoordinatorAssignment::class, 'reservation_id');
+}
+
+ public function flowerPlacements()
+{
+    return $this->hasMany(Flower::class, 'reservation_id');
 }
 
 }

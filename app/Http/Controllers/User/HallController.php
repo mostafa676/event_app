@@ -190,7 +190,7 @@ public function getServiceCategories($serviceId)
 
         return response()->json([
             'status' => true,
-            'message' => 'تم جلب التصنيفات بنجاح.',
+            'message' => 'تم جلب التصنيفات 11 بنجاح.',
             'categories' => $categories
         ]);
     } catch (\Exception $e) {
@@ -216,7 +216,7 @@ public function getCategoryVariants($categoryId)
 
         return response()->json([
             'status' => true,
-            'message' => 'تم جلب الأنواع بنجاح.',
+            'message' => 'تم جلب الأنواع 22 بنجاح.',
             'variants' => $variants
         ]);
     } catch (\Exception $e) {
@@ -242,7 +242,7 @@ public function getVariantTypes($variantId)
 
         return response()->json([
             'status' => true,
-            'message' => 'تم جلب الأصناف بنجاح.',
+            'message' => 'تم جلب الأصناف  33 بنجاح.',
             'types' => $types
         ]);
     } catch (\Exception $e) {
@@ -286,7 +286,7 @@ public function getMusicServiceDetails($hallOwnerId)
 public function requestCustomSong(Request $request)
 {
     $request->validate([
-        'reservation_id' => 'required|exists:reservation,id',
+        'reservation_id' => 'required|exists:reservations,id',
         'title' => 'required|string',
         'artist' => 'nullable|string',
     ]);
@@ -314,7 +314,7 @@ public function getPhotographers($hallOwnerId)
     try {
         $photographers = Coordinator::with('user', 'portfolios')
             ->where('hall_owner_id', $hallOwnerId)
-            ->whereHas('type', fn($q) => $q->where('name_en', 'photographer'))
+            ->whereHas('type', fn($q) => $q->where('name_en', 'PHOTOGRAFER'))
             ->get();
  if (!$photographers){
                 return response()->json([

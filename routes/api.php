@@ -17,7 +17,6 @@ use App\Http\Controllers\coordinator\CoordinatorController;
 use Illuminate\Http\Request;
 
 
-
 Route::post('/register', [AuthController::class, 'register']); // done
 Route::post('/login', [AuthController::class, 'login']);  // done
 
@@ -84,7 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/dj', [UserReservationController::class, 'addassignDJ']);//done
         Route::post('/flowers', [UserReservationController::class, 'addFlowerDecoration']); // done
         Route::get('/summary', [UserReservationController::class, 'getReservationSummary']);  // done
-        Route::post('/confirm', [UserReservationController::class, 'confirmReservation']);    // done
+        Route::post('/confirmm', [UserReservationController::class, 'confirmReservationinuser']);    // done
         Route::put('/{reservationId}', [UserReservationController::class, 'updateReservation']);  // done
         Route::delete('/{reservationId}', [UserReservationController::class, 'cancelReservation']);  //done
         Route::get('/', [UserReservationController::class, 'getUserReservations']);  // done
@@ -135,6 +134,8 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
     Route::get('/reservations/{reservationId}/tasks/{status}', [ReseravtionController::class, 'getTasksByReservationAndStatus']);
     Route::get('/reservations/incomplete/ss', [ReseravtionController::class, 'getOrganizedIncompleteReservations']);
     Route::get('/tasks/{id}', [ReseravtionController::class, 'showTask']);
+    Route::post('/confirmReservation/{reservationId}', [ReseravtionController::class, 'confirmReservationinhallowner']);
+
 
     // إدارة المنسقين بواسطة مالك الصالة
     Route::prefix('coordinators')->group(function () {
@@ -155,7 +156,7 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
         Route::post('/Store', [HallOwnerServiceController::class, 'storeService']);
         Route::post('/Sfood-categories', [HallOwnerServiceController::class, 'storeFoodCategory']);
         Route::post('/Sservice-variants', [HallOwnerServiceController::class, 'storeFoodVariants']);
-        Route::post('/Sservice-variants', [HallOwnerServiceController::class, 'storeFoodTypes']);
+        Route::post('/Sservice-types', [HallOwnerServiceController::class, 'storeFoodTypes']);
         Route::post('/Sdecoration-types', [HallOwnerServiceController::class, 'storeDecorationType']);
         Route::post('/Sflowers', [HallOwnerServiceController::class, 'storeFlower']);
         Route::delete('Dservice/{id}', [HallOwnerServiceController::class, 'deleteService']);

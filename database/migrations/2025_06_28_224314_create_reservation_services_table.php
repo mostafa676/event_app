@@ -15,7 +15,7 @@ return new class extends Migration {
     $table->foreignId('service_category_id')->nullable()->constrained('service_categories')->onDelete('set null');
     $table->integer('quantity');
     $table->decimal('unit_price', 10, 2);
-        $table->foreignId('coordinator_id')->constrained()->onDelete('cascade');
+        $table->foreignId('coordinator_id')->nullable()->constrained()->onDelete('cascade');
 
 
     $table->timestamps();

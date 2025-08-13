@@ -93,18 +93,20 @@ class HallController extends Controller
             $validated = $request->validate([
                 'name_ar' => 'required|string|max:255',
                 'name_en' => 'required|string|max:255',
+                'event_type_id' => 'required|exists:event_types,id',
                 'place_type_id' => 'required|exists:place_types,id',
                 'location_ar' => 'required|string|max:255',
                 'location_en' => 'required|string|max:255',
                 'capacity' => 'required|integer|min:1',
                 'price' => 'required|numeric|min:0',
-                'images' => 'nullable|array|max:3',
+                'images' => 'nullable|array|max:6',
                 'images.*' => 'image|mimes:jpeg,png,jpg|max:2048', 
             ]);
             $hallData = [
                 'user_id' => auth()->id(),
                 'name_ar' => $validated['name_ar'],
                 'name_en' => $validated['name_en'],
+                'event_type_id' => $validated['event_type_id'],
                 'place_type_id' => $validated['place_type_id'],
                 'location_ar' => $validated['location_ar'],
                 'location_en' => $validated['location_en'],
@@ -136,9 +138,15 @@ class HallController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+
+public function update(Request $request, $id)
     {
         try {
+            // يمكن أيضاً الوصول للـ ID من الـ form-data إذا تم إرساله، لكن الطريقة القياسية هي من الرابط.
+            // $hallIdFromRequest = $request->input('id');
+            // $hall = Hall::where('id', $hallIdFromRequest ?? $id)->where('user_id', auth()->id())->first();
+
+            // الطريقة الأفضل: استخدام الـ ID من الرابط مباشرة
             $hall = Hall::where('id', $id)->where('user_id', auth()->id())->first();
             if (!$hall) {
                 return response()->json([
@@ -155,7 +163,7 @@ class HallController extends Controller
                 'capacity' => 'required|integer|min:1',
                 'price' => 'required|numeric|min:0',
                 'images' => 'nullable|array|max:3',
-                'images.*' => 'image|mimes:jpeg,png,jpg|max:2048', 
+                'images.*' => 'image|mimes:jpeg,png,jpg|max:2048',
             ]);
             $hallData = [
                 'name_ar' => $validated['name_ar'],
@@ -194,6 +202,8 @@ class HallController extends Controller
         }
     }
 
+
+
     public function destroy($id)
     {
         try {
@@ -219,62 +229,183 @@ class HallController extends Controller
             ], 500);
         }
     }
+public function updateHallSchedule(Request $request, $hallId)
+{
+    try {
+        $hall = Hall::where('id', $hallId)
+            ->where('user_id', auth()->id())
+            ->first();
 
-    public function updateHallSchedule(Request $request, $hallId)
-    {
-        try {
-            $hall = Hall::where('id', $hallId)->where('user_id', auth()->id())->first();
-            if (!$hall) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'الصالة غير موجودة أو لا تملك صلاحية تعديل جدولها.',
-                ], 404);
-            }
-
-            $request->validate([
-                'schedules' => 'required|array',
-                'schedules.*.day_of_week' => 'required|string|in:sunday,monday,tuesday,wednesday,thursday,friday,saturday',
-                // القواعد المعدلة: start_time و end_time مطلوبة فقط إذا كانت is_available = true
-                'schedules.*.start_time' => 'required_if:schedules.*.is_available,true|nullable|date_format:H:i',
-                'schedules.*.end_time' => 'required_if:schedules.*.is_available,true|nullable|date_format:H:i|after:schedules.*.start_time',
-                'schedules.*.is_available' => 'boolean', // اختياري، الافتراضي true
-            ]);
-
-            foreach ($request->schedules as $scheduleData) {
-                HallSchedule::updateOrCreate(
-                    [
-                        'hall_id' => $hall->id,
-                        'day_of_week' => $scheduleData['day_of_week'],
-                    ],
-                    [
-                        'start_time' => $scheduleData['is_available'] ? $scheduleData['start_time'] : null, // قم بتعيين null إذا كانت غير متاحة
-                        'end_time' => $scheduleData['is_available'] ? $scheduleData['end_time'] : null,     // قم بتعيين null إذا كانت غير متاحة
-                        'is_available' => $scheduleData['is_available'] ?? true,
-                    ]
-                );
-            }
-
-            $hall->load('schedules'); 
-            return response()->json([
-                'status' => true,
-                'message' => 'تم تحديث جدول أوقات الصالة بنجاح.',
-                'hall_schedules' => $hall->schedules,
-            ], 200);
-
-        } catch (ValidationException $e) {
-            Log::error('Validation error updating hall schedule: ' . $e->getMessage(), ['errors' => $e->errors()]);
+        if (!$hall) {
             return response()->json([
                 'status' => false,
-                'message' => 'فشل التحقق من صحة البيانات.',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('Error updating hall schedule: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء تحديث جدول الصالة.',
-                'error' => $e->getMessage(),
-            ], 500);
+                'message' => 'الصالة غير موجودة أو لا تملك صلاحية تعديل جدولها.',
+            ], 404);
         }
+
+        $request->validate([
+            'schedules' => 'required|array',
+            'schedules.*.day_of_week' => 'required|string|in:sunday,monday,tuesday,wednesday,thursday,friday,saturday',
+            'schedules.*.start_time' => 'required_if:schedules.*.is_available,true|nullable|date_format:H:i',
+            'schedules.*.end_time' => 'required_if:schedules.*.is_available,true|nullable|date_format:H:i|after:schedules.*.start_time',
+            'schedules.*.is_available' => 'boolean',
+        ]);
+
+        foreach ($request->schedules as $scheduleData) {
+            HallSchedule::updateOrCreate(
+                [
+                    'hall_id' => $hall->id,
+                    'day_of_week' => strtolower($scheduleData['day_of_week']),
+                ],
+                [
+                    'start_time' => $scheduleData['is_available'] ? $scheduleData['start_time'] . ':00' : null,
+                    'end_time' => $scheduleData['is_available'] ? $scheduleData['end_time'] . ':00' : null,
+                    'is_available' => $scheduleData['is_available'] ?? true,
+                ]
+            );
+        }
+
+        $hall->load('schedules');
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم تحديث جدول أوقات الصالة بنجاح.',
+            'hall_schedules' => $hall->schedules,
+        ], 200);
+
+    } catch (ValidationException $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل التحقق من صحة البيانات.',
+            'errors' => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء تحديث جدول الصالة.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
 }
+
+
+}
+
+
+    // public function updateHallSchedule(Request $request, $hallId)
+    // {
+    //     try {
+    //         $hall = Hall::where('id', $hallId)->where('user_id', auth()->id())->first();
+    //         if (!$hall) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'الصالة غير موجودة أو لا تملك صلاحية تعديل جدولها.',
+    //             ], 404);
+    //         }
+
+    //         $request->validate([
+    //             'schedules' => 'required|array',
+    //             'schedules.*.day_of_week' => 'required|string|in:sunday,monday,tuesday,wednesday,thursday,friday,saturday',
+    //             // القواعد المعدلة: start_time و end_time مطلوبة فقط إذا كانت is_available = true
+    //             'schedules.*.start_time' => 'required_if:schedules.*.is_available,true|nullable|date_format:H:i',
+    //             'schedules.*.end_time' => 'required_if:schedules.*.is_available,true|nullable|date_format:H:i|after:schedules.*.start_time',
+    //             'schedules.*.is_available' => 'boolean', // اختياري، الافتراضي true
+    //         ]);
+
+    //         foreach ($request->schedules as $scheduleData) {
+    //             HallSchedule::updateOrCreate(
+    //                 [
+    //                     'hall_id' => $hall->id,
+    //                     'day_of_week' => $scheduleData['day_of_week'],
+    //                 ],
+    //                 [
+    //                     'start_time' => $scheduleData['is_available'] ? $scheduleData['start_time'] : null, // قم بتعيين null إذا كانت غير متاحة
+    //                     'end_time' => $scheduleData['is_available'] ? $scheduleData['end_time'] : null,     // قم بتعيين null إذا كانت غير متاحة
+    //                     'is_available' => $scheduleData['is_available'] ?? true,
+    //                 ]
+    //             );
+    //         }
+
+    //         $hall->load('schedules'); 
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'تم تحديث جدول أوقات الصالة بنجاح.',
+    //             'hall_schedules' => $hall->schedules,
+    //         ], 200);
+
+    //     } catch (ValidationException $e) {
+    //         Log::error('Validation error updating hall schedule: ' . $e->getMessage(), ['errors' => $e->errors()]);
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'فشل التحقق من صحة البيانات.',
+    //             'errors' => $e->errors(),
+    //         ], 422);
+    //     } catch (\Exception $e) {
+    //         Log::error('Error updating hall schedule: ' . $e->getMessage());
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'حدث خطأ أثناء تحديث جدول الصالة.',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
+
+
+    //     public function update(Request $request, $id)
+    // {
+    //     try {
+    //         $hall = Hall::where('id', $id)->where('user_id', auth()->id())->first();
+    //         if (!$hall) {
+    //             return response()->json([
+    //                 'status' => false,
+    //                 'message' => 'الصالة غير موجودة أو لا تملك صلاحية تعديلها.',
+    //             ], 404);
+    //         }
+    //         $validated = $request->validate([
+    //             'name_ar' => 'required|string|max:255',
+    //             'name_en' => 'required|string|max:255',
+    //             'event_type_id' => 'required|exists:event_types,id',
+    //             'location_ar' => 'required|string|max:255',
+    //             'location_en' => 'required|string|max:255',
+    //             'capacity' => 'required|integer|min:1',
+    //             'price' => 'required|numeric|min:0',
+    //             'images' => 'nullable|array|max:3',
+    //             'images.*' => 'image|mimes:jpeg,png,jpg|max:2048', 
+    //         ]);
+    //         $hallData = [
+    //             'name_ar' => $validated['name_ar'],
+    //             'name_en' => $validated['name_en'],
+    //             'event_type_id' => $validated['event_type_id'],
+    //             'location_ar' => $validated['location_ar'],
+    //             'location_en' => $validated['location_en'],
+    //             'capacity' => $validated['capacity'],
+    //             'price' => $validated['price'],
+    //         ];
+    //         if ($request->hasFile('images')) {
+    //             $this->deleteOldImages($hall, ['image_1', 'image_2', 'image_3']);
+    //             $imagePaths = $this->storeImages($request->file('images'));
+    //             $hallData = array_merge($hallData, $imagePaths);
+    //         }
+    //         $hall->update($hallData);
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'تم تحديث معلومات الصالة بنجاح.',
+    //             'hall' => $hall,
+    //         ], 200);
+    //     } catch (ValidationException $e) {
+    //         Log::error('Validation error updating hall: ' . $e->getMessage(), ['errors' => $e->errors()]);
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'فشل التحقق من صحة البيانات.',
+    //             'errors' => $e->errors(),
+    //         ], 422);
+    //     } catch (\Exception $e) {
+    //         Log::error('Error updating hall: ' . $e->getMessage());
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'حدث خطأ أثناء تحديث الصالة.',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }

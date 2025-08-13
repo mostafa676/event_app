@@ -16,18 +16,21 @@ use Illuminate\Validation\ValidationException;
 
 class ServiceController extends Controller
 {
-    private function storeImage($file)
+    private function storeSingleImage($file, string $directory): string
     {
-        if ($file) {
-            return $file->store('service_variant_images', 'public'); 
-        }
-        return null;
-    }
+        // تخزين الملف في مسار محدد
+        $path = $file->store('public/' . $directory);
 
-    private function deleteOldImage(?string $path)
+        // إرجاع المسار بعد استبدال 'public' بـ 'storage' ليتم استخدامه في الرابط
+        return str_replace('public/', 'storage/', $path);
+    }
+    
+    private function deleteOldImages(Hall $hall, array $imageColumns)
     {
-        if ($path) {
-            Storage::disk('public')->delete($path);
+        foreach ($imageColumns as $column) {
+            if ($hall->{$column}) {
+                Storage::disk('public')->delete($hall->{$column});
+            }
         }
     }
 
@@ -46,120 +49,211 @@ class ServiceController extends Controller
     }
 
 public function storeFoodCategory(Request $request)
-{
-    $request->validate([
-        'service_id' => 'required|exists:services,id',
-        'name_ar' => 'required|string',
-        'name_en' => 'required|string',
-        'image_1' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-    ]);
-        
-    if ($request->hasFile('image')) {
-    $request['image'] = $request->file('image')->store('food_variants', 'public');
-}
+    {
+        try {
+            $validated = $request->validate([
+                'service_id' => 'required|exists:services,id',
+                'name_ar' => 'required|string',
+                'name_en' => 'required|string',
+                'image_1' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            ]);
 
-    $category = ServiceCategory::create($request->only('service_id','name_ar', 'name_en' , 'image_1'));
+            $data = $request->only('service_id', 'name_ar', 'name_en');
+            // حفظ الصورة بشكل صحيح وإضافة مسارها إلى مصفوفة البيانات
+            $imagePath = $this->storeSingleImage($request->file('image_1'), 'service_categories');
+            $data['image_1'] = $imagePath;
 
-    return response()->json([
-        'status' => true,
-        'message' => 'تم إنشاء صنف الطعام.',
-        'category' => $category
-    ]);
+            // إنشاء صنف الخدمة في قاعدة البيانات
+            $category = ServiceCategory::create($data);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'تم إنشاء صنف الطعام بنجاح.',
+                'category' => $category
+            ], 201);
+
+        } catch (ValidationException $e) {
+            Log::error('Validation error storing food category: ' . $e->getMessage(), ['errors' => $e->errors()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'فشل التحقق من صحة البيانات.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error storing food category: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'حدث خطأ أثناء إنشاء صنف الطعام.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
-    public function storeFoodVariants (Request $request)
-{
-    $request->validate([
-        'service_category_id' => 'required|exists:service_categories,id',
-        'name_ar' => 'required|string',
-        'name_en' => 'required|string',
-        'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-    ]);
+    public function storeFoodVariants(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'service_category_id' => 'required|exists:service_categories,id',
+                'name_ar' => 'required|string',
+                'name_en' => 'required|string',
+                'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            ]);
 
-    if ($request->hasFile('image')) {
-    $request['image'] = $request->file('image')->store('food_variants', 'public');
-}
+            // حفظ الصورة وإضافة المسار إلى البيانات الموثقة
+            $imagePath = $this->storeSingleImage($request->file('image'), 'service_variants');
+            $validated['image'] = $imagePath;
 
-    $variant = ServiceVariant::create($request->only('service_category_id','name_ar', 'name_en' , 'image'));
+            // إنشاء السجل باستخدام البيانات الموثقة الكاملة
+            $variant = ServiceVariant::create($validated);
 
-    return response()->json([
-        'status' => true,
-        'message' => 'تم إنشاء نوع الطعام.',
-        'category' => $variant
-    ]);
+            return response()->json([
+                'status' => true,
+                'message' => 'تم إنشاء نوع الطعام (Variant) بنجاح.',
+                'variant' => $variant
+            ], 201);
+
+        } catch (ValidationException $e) {
+            Log::error('Validation error storing food variant: ' . $e->getMessage(), ['errors' => $e->errors()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'فشل التحقق من صحة البيانات.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error storing food variant: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'حدث خطأ أثناء إنشاء نوع الطعام.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
-    public function storeFoodTypes (Request $request)
-{
-    $request->validate([
-        'service_variant_id' => 'required|exists:service_variants,id',
-        'name_ar' => 'required|string',
-        'name_en' => 'required|string',
-        'price' => 'required|numeric|min:0',
-        'description' => 'nullable|string|max:1000',
-        'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+    public function storeFoodTypes(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'service_variant_id' => 'required|exists:service_variants,id',
+                'name_ar' => 'required|string',
+                'name_en' => 'required|string',
+                'price' => 'required|numeric|min:0',
+                'description' => 'nullable|string|max:1000',
+                'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            ]);
 
-    ]);
-            if ($request->hasFile('image')) {
-                $request['image'] = $this->storeImage($request->file('image'));
-            }
-    $type = ServiceType::create($request->only( 'service_variant_id' ,'name_ar', 'name_en' , 'price','description' ,'image'));
+            // حفظ الصورة وإضافة المسار إلى البيانات الموثقة
+            $imagePath = $this->storeSingleImage($request->file('image'), 'service_types');
+            $validated['image'] = $imagePath;
 
-    return response()->json([
-        'status' => true,
-        'message' => 'تم إنشاء الطعام.',
-        'category' => $type
-    ]);
+            // إنشاء السجل باستخدام البيانات الموثقة الكاملة
+            $type = ServiceType::create($validated);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'تم إنشاء صنف الطعام (Type) بنجاح.',
+                'type' => $type
+            ], 201);
+
+        } catch (ValidationException $e) {
+            Log::error('Validation error storing food type: ' . $e->getMessage(), ['errors' => $e->errors()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'فشل التحقق من صحة البيانات.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error storing food type: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'حدث خطأ أثناء إنشاء صنف الطعام.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function storeDecorationType(Request $request)
     {
-    $request->validate([
-        'service_id' => 'required|exists:services,id',
-        'name_ar' => 'required|string',
-        'name_en' => 'required|string',
-        'image_1' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+        try {
+            $validated = $request->validate([
+                'service_id' => 'required|exists:services,id',
+                'name_ar' => 'required|string',
+                'name_en' => 'required|string',
+                'image' => 'required|image|mimes:jpeg,png,jpg|max:2048', // تم تغيير 'image_1' إلى 'image'
+            ]);
 
-    ]);
-    
-    if ($request->hasFile('image')) {
-    $request['image'] = $request->file('image')->store('food_variants', 'public');
-}
+            // حفظ الصورة وإضافة المسار إلى البيانات الموثقة
+            $imagePath = $this->storeSingleImage($request->file('image'), 'decoration_types');
+            $validated['image'] = $imagePath;
 
-    $type = DecorationType::create($request->only('service_id','name_ar', 'name_en','image_1'));
+            // إنشاء السجل باستخدام البيانات الموثقة الكاملة
+            $type = DecorationType::create($validated);
 
-    return response()->json([
-        'status' => true,
-        'message' => 'تمت إضافة نوع الزينة.',
-        'type' => $type
-    ]);
+            return response()->json([
+                'status' => true,
+                'message' => 'تمت إضافة نوع الزينة بنجاح.',
+                'type' => $type
+            ], 201);
+
+        } catch (ValidationException $e) {
+            Log::error('Validation error storing decoration type: ' . $e->getMessage(), ['errors' => $e->errors()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'فشل التحقق من صحة البيانات.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error storing decoration type: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'حدث خطأ أثناء إضافة نوع الزينة.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function storeFlower(Request $request)
-{
-    $request->validate([
-        'decoration_type_id' => 'required|exists:decoration_types,id',
-        'name_ar' => 'required|string',
-        'name_en' => 'required|string',
-        'color' => 'required|string|max:50',
-        'price' => 'required|numeric|min:0',
-        'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-    ]);
+    {
+        try {
+            $validated = $request->validate([
+                'decoration_type_id' => 'required|exists:decoration_types,id',
+                'name_ar' => 'required|string',
+                'name_en' => 'required|string',
+                'color' => 'required|string|max:50',
+                'price' => 'required|numeric|min:0',
+                'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            ]);
 
-    $data = $request->only('decoration_type_id', 'name_ar', 'name_en','color','price','image');
+            // حفظ الصورة وإضافة المسار إلى البيانات الموثقة
+            $imagePath = $this->storeSingleImage($request->file('image'), 'flowers');
+            $validated['image'] = $imagePath;
 
-    if ($request->hasFile('image')) {
-        $data['image'] = $request->file('image')->store('flowers', 'public');
+            // إنشاء السجل باستخدام البيانات الموثقة الكاملة
+            $flower = Flower::create($validated);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'تمت إضافة الزهرة بنجاح.',
+                'flower' => $flower
+            ], 201);
+
+        } catch (ValidationException $e) {
+            Log::error('Validation error storing flower: ' . $e->getMessage(), ['errors' => $e->errors()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'فشل التحقق من صحة البيانات.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error storing flower: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'حدث خطأ أثناء إضافة الزهرة.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
-    $flower = Flower::create($data);
 
-    return response()->json([
-        'status' => true,
-        'message' => 'تمت إضافة الزهرة.',
-        'flower' => $flower
-    ]);
-    }
 
 public function deleteService($id)
 {

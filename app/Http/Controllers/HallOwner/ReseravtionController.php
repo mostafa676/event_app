@@ -7,42 +7,77 @@ use App\Models\CoordinatorType;
 use App\Models\Hall;
 use App\Models\Reservation;
 use Illuminate\Support\Facades\Auth;
+USE App\Helpers\NotificationHelper;
 
 class ReseravtionController extends Controller
 {
+
+// nnn 1
 public function assignCoordinatorsToReservation($reservationId)
 {
-    $reservation = Reservation::with('services.service')->findOrFail($reservationId);
+    $reservation = Reservation::with('reservationServices.service')->findOrFail($reservationId);
     $assignments = [];
-$existingServiceIds=[] ;
-    foreach ($reservation->services as $reservationService) {
+    $existingServiceIds = [];
+
+    foreach ($reservation->reservationServices as $reservationService) {
         $service = $reservationService->service;
-       if (in_array($service->id, $existingServiceIds)) {
-    continue;
-}
-$existingServiceIds[] = $service->id;
-        //(مثلاً DJ للطرب، Chef للطعام)
-        $coordinatorType = CoordinatorType::where('name_en', $service->name_en)->first();
 
-        if ($coordinatorType) {
-            $coordinator = Coordinator::where('coordinator_type_id', $coordinatorType->id)->first();
+        // تجنب تكرار الخدمة
+        if (in_array($service->id, $existingServiceIds)) {
+            continue;
+        }
+        $existingServiceIds[] = $service->id;
 
-            if ($coordinator) {
-                $assignment = CoordinatorAssignment::create([
-                     'reservation_id' => $reservation->id,
-                    'coordinator_id' => $coordinator->id,
-                    'reservation_service_id' => $reservationService->id,
-                    'assigned_by' => Auth::id(),
-                    'status' => 'pending',
-                ]);
-                  
-                $assignments[] = [
-                    'assignment_id' => $assignment->id,
-                    'service' => $service->name_en,
-                    'coordinator' => $coordinator?->user?->name ?? 'يا لهوووي  ',
-                    'status' => $assignment->status,
-                ];
+        // إذا المستخدم حدد منسق بنفسه لهذه الخدمة
+        if (!empty($reservationService->coordinator_id)) {
+            $coordinator = Coordinator::find($reservationService->coordinator_id);
+        } else {
+            // نجيب نوع المنسق
+            $coordinatorType = CoordinatorType::where('name_en', $service->name_en)->first();
+
+            if (!$coordinatorType) {
+                continue;
             }
+
+            // نجيب المنسق اللي عنده أقل عدد مهام
+            $coordinator = Coordinator::where('coordinator_type_id', $coordinatorType->id)
+                ->withCount(['assignments as tasks_count' => function ($q) {
+                    $q->whereIn('status', ['pending', 'accepted']); // المهام النشطة فقط
+                }])
+                ->orderBy('tasks_count', 'asc')
+                ->first();
+        }
+
+        if ($coordinator) {
+            $assignment = CoordinatorAssignment::create([
+                'reservation_id' => $reservation->id,
+                'coordinator_id' => $coordinator->id,
+                'reservation_service_id' => $reservationService->id,
+                'service_id' => $service->id,
+                'assigned_by' => Auth::id(),
+                'status' => 'pending',
+            ]);
+
+            // إشعار للمنسق
+            NotificationHelper::sendFCM(
+                $coordinator->user,
+                'task_assigned',
+                'تم تعيين مهمة جديدة',
+                'تم تعيينك لخدمة: ' . $service->name_ar,
+                [
+                    'assignment_id' => $assignment->id,
+                    'reservation_id' => $reservation->id,
+                    'notifiable_id' => $assignment->id,
+                    'notifiable_type' => CoordinatorAssignment::class
+                ]
+            );
+
+            $assignments[] = [
+                'assignment_id' => $assignment->id,
+                'service' => $service->name_en,
+                'coordinator' => $coordinator?->user?->name ?? 'غير محدد',
+                'status' => $assignment->status,
+            ];
         }
     }
 
@@ -52,7 +87,8 @@ $existingServiceIds[] = $service->id;
         'assignments' => $assignments,
     ]);
 }
-    public function getReservationsForHallOwner()
+
+public function getReservationsForHallOwner()
     {
         $userId = Auth::id(); // صاحب الصالة المسجل دخول
         $reservations = Reservation::whereIn('hall_id', function ($query) use ($userId) {
@@ -75,9 +111,9 @@ $existingServiceIds[] = $service->id;
             'message' => 'تم جلب الحجوزات المرتبطة بصالاتك.',
             'reservations' => $reservations,
         ]);
-    }
+}
 
-    public function show($id)
+public function show($id)
 {
     try {
         $reservation = Reservation::with(['user', 'hall', 'services'])->find($id);
@@ -137,7 +173,7 @@ public function getOrganizedIncompleteReservations()
     try {
         $reservations = Reservation::with(['tasks'])
             ->whereHas('tasks', function ($query) {
-                $query->where('status', '!=', 'completed');
+                $query->where('status', '==', 'working_in');
             })
             ->get();
 
@@ -155,7 +191,6 @@ public function getOrganizedIncompleteReservations()
         ], 500);
     }
 }
-
 public function getTasksByReservationAndStatus($reservationId, $status)
 {
     $allowedStatuses = ['pending', 'accepted', 'rejected'];
@@ -194,7 +229,6 @@ public function getTasksByReservationAndStatus($reservationId, $status)
     }
 }
 
-
 public function showTask($id)
 {
     try {
@@ -227,6 +261,85 @@ public function showTask($id)
     }
 }
 
+// nnn 3
+public function confirmReservationinhallowner($reservationId)
+{
+    $reservation = Reservation::findOrFail($reservationId);
 
+    // تأكيد الحجز
+    $reservation->status = 'completed';
+    $reservation->save();
+
+    // جلب المستخدم صاحب الحجز
+    $user = $reservation->user;
+
+    // رسالة الإشعار
+    $title = 'تم تأكيد الحجز';
+    $body  = 'تم تأكيد حجزك رقم #' . $reservation->id . ' بنجاح.';
+
+    // إرسال الإشعار وحفظه في DB
+    NotificationHelper::sendFCM(
+        $user,
+        'reservation_confirmed', // type
+        $title,
+        $body,
+        [
+            'reservation_id' => $reservation->id,
+            'notifiable_id' => $reservation->id,
+            'notifiable_type' => Reservation::class
+        ]
+    );
+
+    return response()->json([
+        'status'  => true,
+        'message' => 'تم تأكيد الحجز وإرسال الإشعار بنجاح.',
+        'reservation' => $reservation
+    ]);
+}
 
 }
+
+// public function assignCoordinatorsToReservation($reservationId)
+// {
+//     $reservation = Reservation::with('services.service')->findOrFail($reservationId);
+//     $assignments = [];
+// $existingServiceIds=[] ;
+//     foreach ($reservation->services as $reservationService) {
+//         $service = $reservationService->service;
+//        if (in_array($service->id, $existingServiceIds)) {
+//     continue;
+// }
+// $existingServiceIds[] = $service->id;
+//         //(مثلاً DJ للطرب، Chef للطعام)
+//         $coordinatorType = CoordinatorType::where('name_en', $service->name_en)->first();
+
+//         if ($coordinatorType) {
+//             $coordinator = Coordinator::where('coordinator_type_id', $coordinatorType->id)->first();
+
+//             if ($coordinator) {
+//                 $assignment = CoordinatorAssignment::create([
+//     'reservation_id' => $reservation->id,
+//     'coordinator_id' => $coordinator->id,
+//     'reservation_service_id' => $reservationService->id,
+//     'service_id' => $service->id, // أضف هذا السطر
+//     'assigned_by' => Auth::id(),
+//     'status' => 'pending',
+// ]);
+
+                  
+//                 $assignments[] = [
+//                     'assignment_id' => $assignment->id,
+//                     'service' => $service->name_en,
+//                     'coordinator' => $coordinator?->user?->name ?? 'يا لهوووي  ',
+//                     'status' => $assignment->status,
+//                 ];
+//             }
+//         }
+//     }
+
+//     return response()->json([
+//         'status' => true,
+//         'message' => 'تم توزيع المهام على المنسقين بنجاح.',
+//         'assignments' => $assignments,
+//     ]);
+// }

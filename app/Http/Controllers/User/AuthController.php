@@ -12,94 +12,105 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller 
 {
-    public function register(Request $request)
-    {
-        try {
-            $validatedData = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users',
-                'phone' => 'required|digits:10|unique:users',
-                'password' => 'required|string|min:8|confirmed',
-            ]);
+public function register(Request $request)
+{
+    try {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'phone' => 'required|digits:10|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+            'fcm_token' => 'nullable|string', // ← اختياري
+        ]);
 
-            $user = User::create([
-                'name' => $validatedData['name'],
-                'email' => $validatedData['email'],
-                'phone' => $validatedData['phone'],
-                'password' => Hash::make($validatedData['password']),
-                'role' => 'user',
-            ]);
+        $user = User::create([
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'phone' => $validatedData['phone'],
+            'password' => Hash::make($validatedData['password']),
+            'role' => 'user',
+            'fcm_token' => $validatedData['fcm_token'] ?? null, // ← نحفظه إذا موجود
+        ]);
 
-            $token = $user->createToken($user->name . 'auth_token')->plainTextToken;
+        $token = $user->createToken($user->name . 'auth_token')->plainTextToken;
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Registration successful',
-                'user' => $user,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-            ], 201); 
+        return response()->json([
+            'status' => true,
+            'message' => 'Registration successful',
+            'user' => $user,
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+        ], 201); 
 
-        } catch (ValidationException $e) {
-            Log::error('Validation error during registration: ' . $e->getMessage(), ['errors' => $e->errors()]);
-            return response()->json([
-                'status' => false,
-                'message' => 'فشل التحقق من صحة البيانات.',
-                'errors' => $e->errors(),
-            ], 422); 
-        } catch (\Exception $e) {
-            Log::error('Error during registration: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء عملية التسجيل.',
-                'error' => $e->getMessage(),
-            ], 500); 
-        }
+    } catch (ValidationException $e) {
+        Log::error('Validation error during registration: ' . $e->getMessage(), ['errors' => $e->errors()]);
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل التحقق من صحة البيانات.',
+            'errors' => $e->errors(),
+        ], 422); 
+    } catch (\Exception $e) {
+        Log::error('Error during registration: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء عملية التسجيل.',
+            'error' => $e->getMessage(),
+        ], 500); 
     }
+}
 
-    public function login(Request $request)
-    {
-        try {
-            $credentials = $request->validate([
-                'email' => 'required|string|email|max:255',
-                'password' => 'required|string|min:8',
-            ]);
+public function login(Request $request)
+{
+    try {
+        $credentials = $request->validate([
+            'email' => 'required|string|email|max:255',
+            'password' => 'required|string|min:8',
+            'fcm_token' => 'nullable|string', // ← اختياري
+        ]);
 
-            $user = User::where('email', $credentials['email'])->first();
+        $user = User::where('email', $credentials['email'])->first();
 
-            if (!$user || !Hash::check($credentials['password'], $user->password)) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
-                ], 401); 
-            }
-            $user->tokens()->delete();
-            $token = $user->createToken($user->name . 'auth_token')->plainTextToken;
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Login successful',
-                'user' => $user,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-            ], 200); 
-
-        } catch (ValidationException $e) {
-            Log::error('Validation error during login: ' . $e->getMessage(), ['errors' => $e->errors()]);
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return response()->json([
                 'status' => false,
-                'message' => 'فشل التحقق من صحة البيانات.',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('Error during login: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء عملية تسجيل الدخول.',
-                'error' => $e->getMessage(),
-            ], 500);
+                'message' => 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+            ], 401); 
         }
+
+        // إذا أرسل FCM Token نحفظه
+        if (!empty($credentials['fcm_token'])) {
+            $user->fcm_token = $credentials['fcm_token'];
+            $user->save();
+        }
+
+        $user->tokens()->delete();
+        $token = $user->createToken($user->name . 'auth_token')->plainTextToken;
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Login successful',
+            'user' => $user,
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+        ], 200); 
+
+    } catch (ValidationException $e) {
+        Log::error('Validation error during login: ' . $e->getMessage(), ['errors' => $e->errors()]);
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل التحقق من صحة البيانات.',
+            'errors' => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        Log::error('Error during login: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء عملية تسجيل الدخول.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
+
 
 //     public function logout(Request $request)
 // {
@@ -224,4 +235,15 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
+    public function saveFcmToken(Request $request)
+{
+    $request->validate(['token' => 'required|string']);
+    $user = auth()->user();
+    $user->fcm_token = $request->token;
+    $user->save();
+
+    return response()->json(['status' => true, 'message' => 'FCM token saved.']);
+}
+
 }

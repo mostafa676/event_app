@@ -6,30 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
-    {
-Schema::create('notifications', function (Blueprint $table) {
-    $table->uuid('id')->primary(); // معرف فريد من نوع UUID
-    $table->foreignId('user_id')->constrained()->onDelete('cascade'); // المستخدم المستهدف
-    $table->string('type'); // نوع الإشعار (مثال: 'reservation_confirmed')
-    $table->morphs('notifiable'); // ينشئ عمودين:
-        // notifiable_id: ID للعنصر المرتبط
-        // notifiable_type: نوع العنصر (مثال: 'App\Models\Reservation')
-    $table->text('data'); // بيانات الإشعار (تخزن كـ JSON)
-    $table->timestamp('read_at')->nullable(); // وقت قراءة الإشعار
-    $table->timestamps();
-});
+{
+    Schema::create('notifications', function (Blueprint $table) {
+        $table->uuid('id')->primary();
+        $table->foreignId('user_id')->constrained()->onDelete('cascade');
+        $table->string('type');
+        $table->morphs('notifiable');
+        $table->string('title')->nullable(); // عنوان مختصر
+        $table->text('data'); // JSON
+        $table->timestamp('read_at')->nullable();
+        $table->boolean('is_sent_to_firebase')->default(false); // فحص إذا أُرسل
+        $table->timestamps();
+    });
+}
 
-    }
+public function down(): void
+{
+    Schema::dropIfExists('notifications');
+}
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('notifications_tabel');
-    }
 };

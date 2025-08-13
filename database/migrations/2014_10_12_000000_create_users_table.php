@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('phone')->unique();
             $table->string('password');
+            $table->string('fcm_token')->nullable();
             $table->enum('role', ['admin', 'hall_owner', 'coordinator', 'user'])->default('user');
             $table->string('image')->nullable();
             $table->boolean('dark_mode')->default(false); // للوضع الداكن

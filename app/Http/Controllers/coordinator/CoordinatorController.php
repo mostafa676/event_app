@@ -4,7 +4,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Coordinator;
 use App\Models\CoordinatorAssignment;
 use App\Models\CoordinatorType;
-use App\Models\Reservation;
+use App\Helpers\NotificationHelper;
+
 use Illuminate\Support\Facades\Auth;
 
 class CoordinatorController extends Controller
@@ -63,15 +64,78 @@ public function pendingAssignments()
     ]);
 }
 
+// public function acceptAssignment($assignmentId)
+// {
+
+//     $assignment = CoordinatorAssignment::where('id', $assignmentId)
+//         ->where('coordinator_id', Auth::user()->coordinatorProfile->id)
+//         ->firstOrFail();
+
+//     $assignment->status = 'accepted';
+//     $assignment->save();
+
+//     return response()->json([
+//         'status' => true,
+//         'message' => 'تم قبول المهمة بنجاح.',
+//         'data' => $assignment
+//     ]);
+// }
+
+// public function rejectAssignment($assignmentId)
+// {
+//     $assignment = CoordinatorAssignment::where('id', $assignmentId)
+//         ->where('coordinator_id', Auth::user()->coordinatorProfile->id)
+//         ->firstOrFail();
+
+//     $assignment->status = 'rejected';
+//     $assignment->save();
+
+//     return response()->json([
+//         'status' => true,
+//         'message' => 'تم رفض المهمة بنجاح.',
+//         'data' => $assignment
+//     ]);
+// }
+
+
+
+
+
+
+// nnn 4
 public function acceptAssignment($assignmentId)
 {
+    $coordinator = Coordinator::where('user_id', Auth::id())->first();
+
+    if (!$coordinator) {
+        return response()->json([
+            'status' => false,
+            'message' => 'لم يتم العثور على بيانات المنسق.'
+        ], 404);
+    }
 
     $assignment = CoordinatorAssignment::where('id', $assignmentId)
-        ->where('coordinator_id', Auth::user()->coordinatorProfile->id)
+        ->where('coordinator_id', $coordinator->id)
         ->firstOrFail();
 
     $assignment->status = 'accepted';
     $assignment->save();
+
+    // إشعار لصاحب الصالة
+    if ($assignment->reservation && $assignment->reservation->hall && $assignment->reservation->hall->user) {
+        NotificationHelper::sendFCM(
+            $assignment->reservation->hall->user,
+            'task_accepted',
+            'تم قبول المهمة',
+            'قبل المنسق ' . Auth::user()->name . ' المهمة الخاصة بحجزك.',
+            [
+                'assignment_id' => $assignment->id,
+                'reservation_id' => $assignment->reservation->id,
+                'notifiable_id' => $assignment->id,
+                'notifiable_type' => CoordinatorAssignment::class
+            ]
+        );
+    }
 
     return response()->json([
         'status' => true,
@@ -82,12 +146,37 @@ public function acceptAssignment($assignmentId)
 
 public function rejectAssignment($assignmentId)
 {
+    $coordinator =Coordinator::where('user_id', Auth::id())->first();
+
+    if (!$coordinator) {
+        return response()->json([
+            'status' => false,
+            'message' => 'لم يتم العثور على بيانات المنسق.'
+        ], 404);
+    }
+
     $assignment = CoordinatorAssignment::where('id', $assignmentId)
-        ->where('coordinator_id', Auth::user()->coordinatorProfile->id)
+        ->where('coordinator_id', $coordinator->id)
         ->firstOrFail();
 
     $assignment->status = 'rejected';
     $assignment->save();
+
+    // إشعار لصاحب الصالة
+    if ($assignment->reservation && $assignment->reservation->hall && $assignment->reservation->hall->user) {
+        NotificationHelper::sendFCM(
+            $assignment->reservation->hall->user,
+            'task_rejected',
+            'تم رفض المهمة',
+            'رفض المنسق ' . Auth::user()->name . ' المهمة الخاصة بحجزك.',
+            [
+                'assignment_id' => $assignment->id,
+                'reservation_id' => $assignment->reservation->id,
+                'notifiable_id' => $assignment->id,
+                'notifiable_type' => CoordinatorAssignment::class
+            ]
+        );
+    }
 
     return response()->json([
         'status' => true,
@@ -96,6 +185,7 @@ public function rejectAssignment($assignmentId)
     ]);
 }
 
+ 
 
 public function nonPendingAssignments()
 {
