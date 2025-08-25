@@ -9,6 +9,7 @@ use App\Models\Service;
 use App\Models\ServiceCategory;
 use App\Models\ServiceType;
 use App\Models\ServiceVariant;
+use App\Models\Song;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -499,5 +500,84 @@ public function deleteFlower($id)
             ], 500);
         }
     }
+
+public function getDecorationTypes()
+{
+    try {
+        $hallOwnerId = auth()->id();
+
+        $types = DecorationType::whereHas('service', function ($q) use ($hallOwnerId) {
+                // التصحيح هنا: استخدام العلاقة الصحيحة 'halls' بدلاً من 'hall'
+                $q->whereHas('halls', function ($q2) use ($hallOwnerId) {
+                    $q2->where('user_id', $hallOwnerId);
+                });
+            })
+            ->with('flowers')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم جلب أنواع الديكور بنجاح.',
+            'decoration_types' => $types,
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Error fetching decoration types: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء جلب أنواع الديكور.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+public function getSongs()
+{
+    try {
+        $hallOwnerId = auth()->id();
+
+        $songs = Song::where('hall_owner_id', $hallOwnerId)->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم جلب الأغاني بنجاح.',
+            'songs' => $songs,
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Error fetching songs: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء جلب الأغاني.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+public function getFoodCategories()
+{
+    try {
+        $hallOwnerId = auth()->id();
+
+        $categories = ServiceCategory::whereHas('service.halls', function ($q) use ($hallOwnerId) {
+                $q->where('user_id', $hallOwnerId);
+            })
+            ->with(['types', 'variants'])
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم جلب أنواع الطعام بنجاح.',
+            'food_categories' => $categories,
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Error fetching food categories: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء جلب أنواع الطعام.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
 
 }

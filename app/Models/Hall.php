@@ -78,15 +78,12 @@ protected $appends = ['image_url'];
 
     public function getImageUrlAttribute()
     {
-        $urls = [];
-        if ($this->image_1) {
-            $urls['image_1'] = Storage::url($this->image_1);
-        }
-        if ($this->image_2) {
-            $urls['image_2'] = Storage::url($this->image_2);
-        }
-        if ($this->image_3) {
-            $urls['image_3'] = Storage::url($this->image_3);
+         $urls = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $field = "image_$i";
+            if ($this->$field) {
+                $urls[$field] = Storage::url($this->$field);
+            }
         }
         return $urls;
     }

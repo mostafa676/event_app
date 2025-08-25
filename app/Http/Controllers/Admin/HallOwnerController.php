@@ -127,4 +127,62 @@ class HallOwnerController extends Controller
             ], 500);
         }
     }
+
+    public function updateHallOwner(Request $request, $id)
+    {
+        try {
+            $hallOwner = User::where('id', $id)->where('role', 'hall_owner')->first();
+
+            if (!$hallOwner) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'مالك الصالة غير موجود أو ليس لديه دور "مالك صالة".',
+                ], 404);
+            }
+
+            // التحقق من البيانات
+            $validatedData = $request->validate([
+                'name' => 'sometimes|required|string|max:255',
+                'email' => 'sometimes|required|email|max:255|unique:users,email,' . $hallOwner->id,
+                'phone' => 'sometimes|required|digits:10|unique:users,phone,' . $hallOwner->id,
+                'password' => 'nullable|string|min:8|confirmed',
+            ]);
+
+            // تحديث الحقول
+            $updateData = [
+                'name' => $request->filled('name') ? $request->name : $hallOwner->name,
+                'email' => $request->filled('email') ? $request->email : $hallOwner->email,
+                'phone' => $request->filled('phone') ? $request->phone : $hallOwner->phone,
+            ];
+
+            // تحديث كلمة المرور إذا تم إرسالها
+            if ($request->filled('password')) {
+                $updateData['password'] = Hash::make($request->password);
+            }
+
+            $hallOwner->update($updateData);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'تم تحديث معلومات مالك الصالة بنجاح.',
+                'hall_owner' => $hallOwner,
+            ], 200);
+
+        } catch (ValidationException $e) {
+            Log::error('Validation error updating hall owner: ' . $e->getMessage(), ['errors' => $e->errors()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'فشل التحقق من صحة البيانات.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error updating hall owner: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'حدث خطأ أثناء تحديث معلومات مالك الصالة.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    
 }

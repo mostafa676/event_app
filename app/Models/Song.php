@@ -9,5 +9,10 @@ class Song extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'artist', 'language'];
+    protected $fillable = ['hall_owner_id', 'title', 'artist', 'language'];
+
+    public function hallOwner()
+    {
+        return $this->belongsTo(User::class, 'hall_owner_id');
+    }
 }

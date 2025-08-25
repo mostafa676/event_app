@@ -32,7 +32,7 @@ return [
     ],
 
     'fcm' => [
-    'server_key' => env('FCM_SERVER_KEY'),
-],
+        'server_key' => env('FCM_SERVER_KEY'),
+    ],
 
 ];

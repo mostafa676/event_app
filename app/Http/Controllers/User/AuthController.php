@@ -12,6 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller 
 {
+
 public function register(Request $request)
 {
     try {
@@ -69,8 +70,8 @@ public function login(Request $request)
         ]);
 
         $user = User::where('email', $credentials['email'])->first();
-
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+//|| !Hash::check($credentials['password'], $user->password)
+        if (!$user ) {
             return response()->json([
                 'status' => false,
                 'message' => 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
@@ -111,28 +112,63 @@ public function login(Request $request)
     }
 }
 
+public function logout(Request $request)
+{
+    try {
+        $request->user()->currentAccessToken()->delete();
 
-//     public function logout(Request $request)
-// {
-//     try {
-//         $request->user()->currentAccessToken()->delete();
+        return response()->json([
+            'status' => true,
+            'message' => 'تم تسجيل الخروج بنجاح'
+        ], 200);
 
-//         return response()->json([
-//             'status' => true,
-//             'message' => 'تم تسجيل الخروج بنجاح'
-//         ], 200);
+    } catch (\Exception $e) {
+        \Log::error('Error during logout: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء عملية تسجيل الخروج.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
 
-//     } catch (\Exception $e) {
-//         \Log::error('Error during logout: ' . $e->getMessage());
-//         return response()->json([
-//             'status' => false,
-//             'message' => 'حدث خطأ أثناء عملية تسجيل الخروج.',
-//             'error' => $e->getMessage(),
-//         ], 500);
-//     }
-// }
+public function changePassword(Request $request)
+{
+    try {
+        // التحقق من صحة البيانات
+        $validatedData = $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|confirmed',
+        ]);
+        $user = $request->user();
+        if (!Hash::check($validatedData['current_password'], $user->password)) {
+            return response()->json([
+                'status' => false, 'message' => 'كلمة المرور الحالية غير صحيحة.',
+            ], 400);
+        }
+        $user->password = Hash::make($validatedData['new_password']);
+        $user->save();
+        return response()->json([
+            'status' => true,
+            'message' => 'تم تغيير كلمة المرور بنجاح.',
+        ], 200);
+    } catch (ValidationException $e) {
+        Log::error('Validation error during password change: ' . $e->getMessage(), ['errors' => $e->errors()]);
+        return response()->json([      'status' => false,
+            'message' => 'فشل التحقق من صحة البيانات.',
+            'errors' => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        Log::error('Error during password change: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء تغيير كلمة المرور.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
 
-    public function uploadImage(Request $request)
+public function uploadImage(Request $request)
     {
         try {
             $request->validate([
@@ -168,10 +204,9 @@ public function login(Request $request)
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }
-
+}
  
-    public function updateProfile(Request $request)
+public function updateProfile(Request $request)
     {
         try {
             $user = auth()->user();
@@ -217,8 +252,9 @@ public function login(Request $request)
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }
-    public function profile()
+}
+
+public function profile()
     {
         try {
             $user = auth()->user();
@@ -234,9 +270,9 @@ public function login(Request $request)
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }
+}
 
-    public function saveFcmToken(Request $request)
+public function saveFcmToken(Request $request)
 {
     $request->validate(['token' => 'required|string']);
     $user = auth()->user();

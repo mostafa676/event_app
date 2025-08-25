@@ -11,6 +11,7 @@ use App\Models\ServiceVariant;
 use App\Models\Reservation; // نموذج الحجز
 use App\Models\ReservationService; // نموذج خدمات الحجز
 use App\Models\Coordinator; // المشرفين (المنسقين)
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,104 +24,6 @@ USE App\Helpers\NotificationHelper;
 
 class ReservationController extends Controller
 {
-//   public function selectHall(Request $request)
-// {
-//     try {
-//         $request->validate([
-//             'hall_id' => 'required|exists:halls,id',
-//             'reservation_date' => 'required|date_format:Y-m-d',
-//             'start_time' => 'required|date_format:H:i',
-//             'end_time' => 'required|date_format:H:i|after:start_time',
-//         ]);
-
-//         $hallId = $request->hall_id;
-//         $reservationDate = $request->reservation_date;
-//         $startTime = $request->start_time;
-//         $endTime = $request->end_time;
-
-//         // ✅ 1. تحقق من جدول المواعيد للصالة
-//         $dayOfWeek = Carbon::parse($reservationDate)->format('l'); // Monday, Tuesday, etc.
-
-//         $scheduleAvailable = HallSchedule::where('hall_id', $hallId)
-//             ->where('day_of_week', $dayOfWeek)
-//             ->where('is_available', true)
-//             ->where('start_time', '<=', $startTime)
-//             ->where('end_time', '>=', $endTime)
-//             ->exists();
-
-//         if (!$scheduleAvailable) {
-//             return response()->json([
-//                 'status' => false,
-//                 'message' => 'الوقت المختار غير متاح في جدول مواعيد الصالة لهذا اليوم.',
-//             ], 400);
-//         }
-
-//         // ✅ 2. تحقق من عدم وجود تعارض بالحجوزات
-//         $conflict = Reservation::where('hall_id', $hallId)
-//             ->where('reservation_date', $reservationDate)
-//             ->whereIn('status', ['confirmed', 'pending'])
-//             ->where(function ($query) use ($startTime, $endTime) {
-//                 $query->where('start_time', '<', $endTime)
-//                       ->where('end_time', '>', $startTime);
-//             })
-//             ->exists();
-
-//         if ($conflict) {
-//             return response()->json([
-//                 'status' => false,
-//                 'message' => 'عذراً، هذه الفترة الزمنية محجوزة بالفعل للصالة المطلوبة أو هناك حجز معلق.',
-//             ], 400);
-//         }
-
-//         // ✅ 3. إنشاء أو تحديث الحجز المؤقت
-//         $reservation = Reservation::firstOrCreate(
-//             ['user_id' => auth()->id(), 'status' => 'pending'],
-//             [
-//                 'hall_id' => $hallId,
-//                 'reservation_date' => $reservationDate,
-//                 'start_time' => $startTime,
-//                 'end_time' => $endTime,
-//                 'event_type_id' => Hall::find($hallId)->event_type_id,
-//                 'status' => 'pending',
-//                 'total_price' => 0
-//             ]
-//         );
-
-//         if (!$reservation->wasRecentlyCreated) {
-//             $reservation->update([
-//                 'hall_id' => $hallId,
-//                 'reservation_date' => $reservationDate,
-//                 'start_time' => $startTime,
-//                 'end_time' => $endTime,
-//                 'event_type_id' => Hall::find($hallId)->event_type_id,
-//             ]);
-//             $reservation->reservationServices()->delete();
-//         }
-
-//         return response()->json([
-//             'status' => true,
-//             'message' => 'تم اختيار الصالة وتحديث الحجز المؤقت بنجاح.',
-//             'reservation_id' => $reservation->id,
-//             'reservation_status' => $reservation->status,
-//         ], 200);
-
-//     } catch (ValidationException $e) {
-//         Log::error('Validation error in selectHall: ' . $e->getMessage(), ['errors' => $e->errors()]);
-//         return response()->json([
-//             'status' => false,
-//             'message' => 'فشل التحقق من صحة البيانات.',
-//             'errors' => $e->errors(),
-//         ], 422);
-//     } catch (\Exception $e) {
-//         Log::error('Error in selectHall: ' . $e->getMessage());
-//         return response()->json([
-//             'status' => false,
-//             'message' => 'حدث خطأ أثناء اختيار الصالة.',
-//             'error' => $e->getMessage(),
-//         ], 500);
-//     }
-// }
-
 
 public function selectHall(Request $request)
 {
@@ -132,44 +35,47 @@ public function selectHall(Request $request)
             'end_time' => 'required|date_format:H:i|after:start_time',
         ]);
 
-        $hallId = $request->hall_id;
+        $hall = Hall::findOrFail($request->hall_id);
+        $hallId = $hall->id;
         $reservationDate = $request->reservation_date;
         $startTime = $request->start_time . ':00';
         $endTime = $request->end_time . ':00';
 
-        // ضبط صيغة اليوم
-        $dayOfWeek = strtolower(Carbon::parse($reservationDate)->format('l'));
+        // إذا الصالة مو "منزل" شيّك على الجداول والحجوزات
+        if ($hall->name_ar !== 'منزل') {
+            $dayOfWeek = strtolower(Carbon::parse($reservationDate)->format('l'));
 
-        // تحقق من أن الوقت داخل الجدول
-        $scheduleAvailable = HallSchedule::where('hall_id', $hallId)
-            ->where('day_of_week', $dayOfWeek)
-            ->where('is_available', true)
-            ->where('start_time', '<=', $startTime)
-            ->where('end_time', '>=', $endTime)
-            ->exists();
+            // تحقق من أن الوقت داخل الجدول
+            $scheduleAvailable = HallSchedule::where('hall_id', $hallId)
+                ->where('day_of_week', $dayOfWeek)
+                ->where('is_available', true)
+                ->where('start_time', '<=', $startTime)
+                ->where('end_time', '>=', $endTime)
+                ->exists();
 
-        if (!$scheduleAvailable) {
-            return response()->json([
-                'status' => false,
-                'message' => 'الوقت المختار غير متاح في جدول مواعيد الصالة لهذا اليوم.',
-            ], 400);
-        }
+            if (!$scheduleAvailable) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'الوقت المختار غير متاح في جدول مواعيد الصالة لهذا اليوم.',
+                ], 400);
+            }
 
-        // تحقق من عدم وجود تعارض بالحجوزات
-        $conflict = Reservation::where('hall_id', $hallId)
-            ->where('reservation_date', $reservationDate)
-            ->whereIn('status', ['confirmed', 'pending'])
-            ->where(function ($query) use ($startTime, $endTime) {
-                $query->where('start_time', '<', $endTime)
-                      ->where('end_time', '>', $startTime);
-            })
-            ->exists();
+            // تحقق من عدم وجود تعارض بالحجوزات
+            $conflict = Reservation::where('hall_id', $hallId)
+                ->where('reservation_date', $reservationDate)
+                ->whereIn('status', ['confirmed', 'pending'])
+                ->where(function ($query) use ($startTime, $endTime) {
+                    $query->where('start_time', '<', $endTime)
+                          ->where('end_time', '>', $startTime);
+                })
+                ->exists();
 
-        if ($conflict) {
-            return response()->json([
-                'status' => false,
-                'message' => 'عذراً، هذه الفترة الزمنية محجوزة بالفعل أو هناك حجز معلق.',
-            ], 400);
+            if ($conflict) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'عذراً، هذه الفترة الزمنية محجوزة بالفعل أو هناك حجز معلق.',
+                ], 400);
+            }
         }
 
         // إنشاء أو تحديث الحجز المؤقت
@@ -180,7 +86,7 @@ public function selectHall(Request $request)
                 'reservation_date' => $reservationDate,
                 'start_time' => $startTime,
                 'end_time' => $endTime,
-                'event_type_id' => Hall::find($hallId)->event_type_id,
+                'event_type_id' => $hall->event_type_id,
                 'status' => 'pending',
                 'total_price' => 0
             ]
@@ -192,7 +98,7 @@ public function selectHall(Request $request)
                 'reservation_date' => $reservationDate,
                 'start_time' => $startTime,
                 'end_time' => $endTime,
-                'event_type_id' => Hall::find($hallId)->event_type_id,
+                'event_type_id' => $hall->event_type_id,
             ]);
             $reservation->reservationServices()->delete();
         }
@@ -218,6 +124,115 @@ public function selectHall(Request $request)
         ], 500);
     }
 }
+
+public function confirmReservationinuser(Request $request)
+{
+    try {
+        $request->validate([
+            'reservation_id' => 'required|exists:reservations,id',
+            'home_address' => 'nullable|string|max:255',
+            'discount_code' => 'nullable|string|exists:discount_codes,code', 
+        ]);
+
+        $user = auth()->user();
+        $reservation = Reservation::where('id', $request->reservation_id)
+                                ->where('user_id', $user->id)
+                                ->where('status', 'pending')
+                                ->first();
+
+        if (!$reservation) {
+            return response()->json([
+                'status' => false,
+                'message' => 'الحجز المؤقت غير موجود أو لا يمكنك تأكيده.',
+            ], 404);
+        }
+
+        $hall = $reservation->hall;
+        if (!$hall) {
+            return response()->json([
+                'status' => false,
+                'message' => 'لا يمكن تأكيد حجز فارغ. يرجى اختيار صالة أو خدمات أولاً.',
+            ], 400);
+        }
+
+        // تحقق إذا كانت الصالة منزل → لازم يدخل عنوان
+        if ($hall->name_ar === 'منزل' && !$request->filled('home_address')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'يجب إدخال عنوان المنزل عند اختيار حجز منزل.',
+            ], 400);
+        }
+
+        $finalPrice = $this->calculateFinalPrice($reservation); 
+        if ($request->filled('discount_code')) {
+            $discountCode = \App\Models\DiscountCode::where('code', $request->discount_code)
+                                                    ->where('is_active', true)
+                                                    ->first();
+            if ($discountCode) {
+                $discountAmount = ($finalPrice * $discountCode->discount_percentage) / 100;
+                $finalPrice -= $discountAmount;
+                $reservation->discount_code_id = $discountCode->id; 
+            } else {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'كود الخصم غير صالح أو غير نشط.',
+                ], 400);
+            }
+        }
+
+        $reservation->total_price = $finalPrice;
+        $reservation->status = 'confirmed';
+        $reservation->home_address = ($hall->name_ar === 'منزل') ? $request->home_address : null;
+        $reservation->save();
+
+        // إرسال إشعار
+        $targetUser =  User::find($user->id);
+        if ($targetUser) {
+            NotificationHelper::sendFCM(
+                $targetUser,
+                'reservation_confirmed',
+                'تم تأكيد الحجز',
+                'قام ' . $user->name . ' بتأكيد الحجز.',
+                [
+                    'reservation_id' => $reservation->id,
+                    'notifiable_id' => $reservation->id,
+                    'notifiable_type' => "reservation_confirmed to hallowner"
+                ]
+            );
+        }
+
+        $notificationData = [
+            'title' => 'تم تأكيد الحجز',
+            'body' => 'قام ' . $user->name . ' بتأكيد الحجز في صالتك.',
+            'data' => [
+                'reservation_id' => $reservation->id,
+                'notifiable_id' => $reservation->id,
+                "notifiable_type"=> "reservation_confirmed"
+            ]
+        ];
+
+        return response()->json([
+            'status' => true,
+            'message' => "تم تأكيد الحجز بنجاح. سيتم إرسال رسالة تأكيد عند انتهاء الطلب",
+            'reservation' => $reservation,
+            'notification' => $notificationData
+        ], 201); 
+
+    } catch (ValidationException $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'فشل التحقق من صحة البيانات.',
+            'errors' => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء تأكيد الحجز.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
 
 public function addorderFood(Request $request)
 {
@@ -392,95 +407,111 @@ public function addFlowerDecoration(Request $request)
     }
 }
 
-
-
-
 // nnn 
-public function confirmReservationinuser(Request $request)
-{
-    try {
-        $request->validate([
-            'reservation_id' => 'required|exists:reservations,id',
-            'home_address' => 'nullable|string|max:255',
-            'discount_code' => 'nullable|string|exists:discount_codes,code', 
-        ]);
+// public function confirmReservationinuser(Request $request)
+// {
+//     try {
+//         $request->validate([
+//             'reservation_id' => 'required|exists:reservations,id',
+//             'home_address' => 'nullable|string|max:255',
+//             'discount_code' => 'nullable|string|exists:discount_codes,code', 
+//         ]);
 
-        $user = auth()->user();
-        $reservation = Reservation::where('id', $request->reservation_id)
-                                ->where('user_id', $user->id)
-                                ->where('status', 'pending')
-                                ->first();
+//         $user = auth()->user();
+//         $reservation = Reservation::where('id', $request->reservation_id)
+//                                 ->where('user_id', $user->id)
+//                                 ->where('status', 'pending')
+//                                 ->first();
 
-        if (!$reservation) {
-            return response()->json([
-                'status' => false,
-                'message' => 'الحجز المؤقت غير موجود أو لا يمكنك تأكيده.',
-            ], 404);
-        }
-//&& $reservation->reservationServices->isEmpty()
-        if (!$reservation->hall_id ) {
-            return response()->json([
-                'status' => false,
-                'message' => 'لا يمكن تأكيد حجز فارغ. يرجى اختيار صالة أو خدمات أولاً.',
-            ], 400);
-        }
+//         if (!$reservation) {
+//             return response()->json([
+//                 'status' => false,
+//                 'message' => 'الحجز المؤقت غير موجود أو لا يمكنك تأكيده.',
+//             ], 404);
+//         }
 
-        $finalPrice = $this->calculateFinalPrice($reservation); 
-        if ($request->filled('discount_code')) {
-            $discountCode = \App\Models\DiscountCode::where('code', $request->discount_code)
-                                                    ->where('is_active', true)
-                                                    ->first();
-            if ($discountCode) {
-                $discountAmount = ($finalPrice * $discountCode->discount_percentage) / 100;
-                $finalPrice -= $discountAmount;
-                $reservation->discount_code_id = $discountCode->id; 
-            } else {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'كود الخصم غير صالح أو غير نشط.',
-                ], 400);
-            }
-        }
+//         if (!$reservation->hall_id) {
+//             return response()->json([
+//                 'status' => false,
+//                 'message' => 'لا يمكن تأكيد حجز فارغ. يرجى اختيار صالة أو خدمات أولاً.',
+//             ], 400);
+//         }
 
-        $reservation->total_price = $finalPrice;
-        $reservation->status = 'confirmed';
-        $reservation->home_address = ($reservation->hall_id == 9999 && $request->filled('home_address')) ? $request->home_address : null;
-        $reservation->save();
-        // إرسال إشعار لصاحب الصالة
-        if ($reservation->hall && $reservation->hall->user) {
-            NotificationHelper::sendFCM(
-                $reservation->hall->user,
-                'reservation_confirmed',
-                'تم تأكيد الحجز',
-                'قام ' . $user->name . ' بتأكيد الحجز في صالتك.',
-                [
-                    'reservation_id' => $reservation->id,
-                    'notifiable_id' => $reservation->id,
-                    'notifiable_type' => Reservation::class
-                ]
-            );
-        }
+//         $finalPrice = $this->calculateFinalPrice($reservation); 
+//         if ($request->filled('discount_code')) {
+//             $discountCode = \App\Models\DiscountCode::where('code', $request->discount_code)
+//                                                     ->where('is_active', true)
+//                                                     ->first();
+//             if ($discountCode) {
+//                 $discountAmount = ($finalPrice * $discountCode->discount_percentage) / 100;
+//                 $finalPrice -= $discountAmount;
+//                 $reservation->discount_code_id = $discountCode->id; 
+//             } else {
+//                 return response()->json([
+//                     'status' => false,
+//                     'message' => 'كود الخصم غير صالح أو غير نشط.',
+//                 ], 400);
+//             }
+//         }
 
-        return response()->json([
-            'status' => true,
-            'message' => "تم تأكيد الحجز بنجاح. سيتم إرسال رسالة تأكيد عند انتهاء الطلب",
-            'reservation' => $reservation,
-        ], 201); 
+//         $reservation->total_price = $finalPrice;
+//         $reservation->status = 'confirmed';
+//         $reservation->home_address = ($reservation->hall_id == 9999 && $request->filled('home_address')) ? $request->home_address : null;
+//         $reservation->save();
 
-    } catch (ValidationException $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'فشل التحقق من صحة البيانات.',
-            'errors' => $e->errors(),
-        ], 422);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'حدث خطأ أثناء تأكيد الحجز.',
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-}
+//         // تجربة إرسال الإشعار مباشرة لمستخدم محدد
+//         \Log::info('قبل استدعاء NotificationHelper::sendFCM في confirmReservationinuser');
+
+//         $targetUser =  User::find($user->id); // عدّل الرقم حسب الـ ID الموجود عندك
+//         if ($targetUser) {
+//             NotificationHelper::sendFCM(
+//                 $targetUser,
+//                 'reservation_confirmed',
+//                 'تم تأكيد الحجز',
+//                 'قام ' . $user->name . ' بتأكيد الحجز.',
+//                 [
+//                     'reservation_id' => $reservation->id,
+//                     'notifiable_id' => $reservation->id,
+//                     'notifiable_type' => "reservation_confirmed to hallowner"
+//                 ]
+//             );
+//         } else {
+//             \Log::warning('المستخدم الهدف غير موجود لإرسال الإشعار.');
+//         }
+
+//         \Log::info('بعد استدعاء NotificationHelper::sendFCM في confirmReservationinuser');
+
+//         $notificationData = [
+//             'title' => 'تم تأكيد الحجز',
+//             'body' => 'قام ' . $user->name . ' بتأكيد الحجز في صالتك.',
+//             'data' => [
+//                 'reservation_id' => $reservation->id,
+//                 'notifiable_id' => $reservation->id,
+//                 "notifiable_type"=> "reservation_confirmed"
+//             ]
+//         ];
+
+//         return response()->json([
+//             'status' => true,
+//             'message' => "تم تأكيد الحجز بنجاح. سيتم إرسال رسالة تأكيد عند انتهاء الطلب",
+//             'reservation' => $reservation,
+//             'notification' => $notificationData
+//         ], 201); 
+
+//     } catch (ValidationException $e) {
+//         return response()->json([
+//             'status' => false,
+//             'message' => 'فشل التحقق من صحة البيانات.',
+//             'errors' => $e->errors(),
+//         ], 422);
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'status' => false,
+//             'message' => 'حدث خطأ أثناء تأكيد الحجز.',
+//             'error' => $e->getMessage(),
+//         ], 500);
+//     }
+// }
 
 
 public function getReservationSummary()
@@ -669,44 +700,44 @@ public function updateReservation(Request $request, $reservationId)
         }
     }
 
-    public function getUserReservations()
-    {
-        try {
-            $user = auth()->user();
-            $reservations = Reservation::with([
+public function getUserReservations(){
+    try {
+        $user = auth()->user();
+
+        $reservations = Reservation::with([
                 'hall',
                 'eventType',
                 'reservationServices.service',
                 'reservationServices.variant'
             ])
             ->where('user_id', $user->id)
+            ->where('status', '!=', 'cancelled') 
             ->orderBy('created_at', 'desc')
             ->get();
 
-            if ($reservations->isEmpty()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'لا توجد حجوزات سابقة.',
-                    'reservations' => [],
-                ], 200);
-            }
-
-            return response()->json([
-                'status' => true,
-                'message' => 'تم جلب الحجوزات بنجاح.',
-                'reservations' => $reservations,
-            ], 200);
-
-        } catch (\Exception $e) {
-            Log::error('Error in getUserReservations: ' . $e->getMessage());
+        if ($reservations->isEmpty()) {
             return response()->json([
                 'status' => false,
-                'message' => 'حدث خطأ أثناء جلب الحجوزات.',
-                'error' => $e->getMessage(),
-            ], 500);
+                'message' => 'لا توجد حجوزات حالية أو سابقة (باستثناء الملغية).',
+                'reservations' => [],
+            ], 200);
         }
-    }
 
+        return response()->json([
+            'status' => true,
+            'message' => 'تم جلب الحجوزات بنجاح.',
+            'reservations' => $reservations,
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Error in getUserReservations: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء جلب الحجوزات.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
    private function calculateFinalPrice(Reservation $reservation)
 {
     $totalPrice = 0;

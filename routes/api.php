@@ -27,12 +27,12 @@ Route::post('/login', [AuthController::class, 'login']);  // done
 Route::middleware('auth:sanctum')->group(function () {
     // مسار تسجيل الخروج
     Route::post('/logout', [AuthController::class, 'logout']);  // done 
-
     // مسارات ملف المستخدم الشخصي
     Route::prefix('user')->group(function () {
         Route::post('/profile/image', [AuthController::class, 'uploadImage']);  // done
         Route::put('/profile', [AuthController::class, 'updateProfile']); // done
         Route::get('/profile', [AuthController::class, 'profile']); // done
+        Route::post('/change-password', [AuthController::class, 'changePassword']);
     });
 
     // مسارات البحث
@@ -106,6 +106,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
         Route::get('/', [AdminHallOwnerController::class, 'index']); // done 
         Route::get('/{id}', [AdminHallOwnerController::class, 'show']); // done 
         Route::post('/', [AdminHallOwnerController::class, 'createHallOwner']); // done
+        Route::patch('/{id}', [AdminHallOwnerController::class, 'updateHallOwner']);
         Route::delete('/{id}', [AdminHallOwnerController::class, 'deleteHallOwner']); // done
     });
 
@@ -152,7 +153,7 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
     Route::prefix('services')->group(function () {
         Route::get('/hall/{hallId}', [HallOwnerServiceController::class, 'getHallServices']); //done عرض الخدمات المرتبطة بصالة محددة      
         Route::post('/attach', [HallOwnerServiceController::class, 'attachService']); //done ربط خدمة بصالة
-        Route::post('/detach', [HallOwnerServiceController::class, 'detachService']); //done  فصل خدمة عن صالة
+        Route::delete('/detach', [HallOwnerServiceController::class, 'detachService']); //done  فصل خدمة عن صالة
         Route::post('/Store', [HallOwnerServiceController::class, 'storeService']);
         Route::post('/Sfood-categories', [HallOwnerServiceController::class, 'storeFoodCategory']);
         Route::post('/Sservice-variants', [HallOwnerServiceController::class, 'storeFoodVariants']);
@@ -165,6 +166,9 @@ Route::prefix('hall-owner')->middleware(['auth:sanctum', 'hall_owner'])->group(f
         Route::delete('DdeleteFoodType/{id}', [HallOwnerServiceController::class, 'deleteFoodType']);
         Route::delete('DDecorationType/{id}', [HallOwnerServiceController::class, 'deleteDecorationType']);
         Route::delete('Dflower/{id}', [HallOwnerServiceController::class, 'deleteFlower']);
+        Route::get('/decoration-types', [HallOwnerServiceController::class, 'getDecorationTypes']);
+        Route::get('/songs', [HallOwnerServiceController::class, 'getSongs']);
+        Route::get('/food-categories', [HallOwnerServiceController::class, 'getFoodCategories']);
         });
 
         });

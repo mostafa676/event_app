@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Http\Controllers\HallOwner; 
-
 use App\Http\Controllers\Controller;
 use App\Models\Hall; 
 use App\Models\HallSchedule; 
@@ -138,71 +136,65 @@ class HallController extends Controller
         }
     }
 
-
-public function update(Request $request, $id)
+    public function update(Request $request, $id)
     {
         try {
-            // يمكن أيضاً الوصول للـ ID من الـ form-data إذا تم إرساله، لكن الطريقة القياسية هي من الرابط.
-            // $hallIdFromRequest = $request->input('id');
-            // $hall = Hall::where('id', $hallIdFromRequest ?? $id)->where('user_id', auth()->id())->first();
+            $hall = Hall::findOrFail($id);
 
-            // الطريقة الأفضل: استخدام الـ ID من الرابط مباشرة
-            $hall = Hall::where('id', $id)->where('user_id', auth()->id())->first();
-            if (!$hall) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'الصالة غير موجودة أو لا تملك صلاحية تعديلها.',
-                ], 404);
-            }
-            $validated = $request->validate([
-                'name_ar' => 'required|string|max:255',
-                'name_en' => 'required|string|max:255',
-                'event_type_id' => 'required|exists:event_types,id',
-                'location_ar' => 'required|string|max:255',
-                'location_en' => 'required|string|max:255',
-                'capacity' => 'required|integer|min:1',
-                'price' => 'required|numeric|min:0',
-                'images' => 'nullable|array|max:3',
-                'images.*' => 'image|mimes:jpeg,png,jpg|max:2048',
+            $request->validate([
+                'name_ar' => 'nullable|string|max:255',
+                'name_en' => 'nullable|string|max:255',
+                'location_ar' => 'nullable|string|max:255',
+                'location_en' => 'nullable|string|max:255',
+                'capacity' => 'nullable|integer|min:1',
+                'price' => 'nullable|numeric|min:0',
+                'event_type_id' => 'nullable|exists:event_types,id',
+                'place_type_id' => 'nullable|exists:place_types,id',
+                'images.*' => 'nullable|file|image|max:2048', // صور جديدة
             ]);
-            $hallData = [
-                'name_ar' => $validated['name_ar'],
-                'name_en' => $validated['name_en'],
-                'event_type_id' => $validated['event_type_id'],
-                'location_ar' => $validated['location_ar'],
-                'location_en' => $validated['location_en'],
-                'capacity' => $validated['capacity'],
-                'price' => $validated['price'],
-            ];
+
+            // تحديث الحقول النصية
+            $hall->update($request->only([
+                'name_ar', 'name_en', 'location_ar', 'location_en',
+                'capacity', 'price', 'event_type_id', 'place_type_id'
+            ]));
+
+            // تحديث الصور إذا أُرسلت
             if ($request->hasFile('images')) {
-                $this->deleteOldImages($hall, ['image_1', 'image_2', 'image_3']);
-                $imagePaths = $this->storeImages($request->file('images'));
-                $hallData = array_merge($hallData, $imagePaths);
+                foreach ($request->file('images') as $index => $image) {
+                    $path = $image->store('halls', 'public');
+                    $field = "image_" . ($index + 1);
+
+                    // حذف الصورة القديمة إذا موجودة
+                    if ($hall->$field) {
+                        Storage::disk('public')->delete($hall->$field);
+                    }
+
+                    $hall->$field = $path;
+                }
+                $hall->save();
             }
-            $hall->update($hallData);
+
             return response()->json([
                 'status' => true,
-                'message' => 'تم تحديث معلومات الصالة بنجاح.',
-                'hall' => $hall,
+                'message' => 'تم تعديل بيانات الصالة بنجاح.',
+                'hall' => $hall->fresh()
             ], 200);
+
         } catch (ValidationException $e) {
-            Log::error('Validation error updating hall: ' . $e->getMessage(), ['errors' => $e->errors()]);
             return response()->json([
                 'status' => false,
                 'message' => 'فشل التحقق من صحة البيانات.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Error updating hall: ' . $e->getMessage());
             return response()->json([
                 'status' => false,
-                'message' => 'حدث خطأ أثناء تحديث الصالة.',
-                'error' => $e->getMessage(),
+                'message' => 'حدث خطأ أثناء تعديل بيانات الصالة.',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
-
-
 
     public function destroy($id)
     {
@@ -229,7 +221,8 @@ public function update(Request $request, $id)
             ], 500);
         }
     }
-public function updateHallSchedule(Request $request, $hallId)
+
+    public function updateHallSchedule(Request $request, $hallId)
 {
     try {
         $hall = Hall::where('id', $hallId)
@@ -286,8 +279,7 @@ public function updateHallSchedule(Request $request, $hallId)
             'error' => $e->getMessage(),
         ], 500);
     }
-}
-
+    }
 
 }
 

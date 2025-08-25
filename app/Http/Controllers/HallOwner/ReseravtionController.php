@@ -18,6 +18,7 @@ public function assignCoordinatorsToReservation($reservationId)
     $reservation = Reservation::with('reservationServices.service')->findOrFail($reservationId);
     $assignments = [];
     $existingServiceIds = [];
+    $notifications = []; 
 
     foreach ($reservation->reservationServices as $reservationService) {
         $service = $reservationService->service;
@@ -59,16 +60,16 @@ public function assignCoordinatorsToReservation($reservationId)
             ]);
 
             // إشعار للمنسق
-            NotificationHelper::sendFCM(
+            $notifications = NotificationHelper::sendFCM(
                 $coordinator->user,
                 'task_assigned',
                 'تم تعيين مهمة جديدة',
                 'تم تعيينك لخدمة: ' . $service->name_ar,
-                [
+                data: [
                     'assignment_id' => $assignment->id,
                     'reservation_id' => $reservation->id,
                     'notifiable_id' => $assignment->id,
-                    'notifiable_type' => CoordinatorAssignment::class
+                    'notifiable_type' => "task_assigned"
                 ]
             );
 
@@ -76,15 +77,19 @@ public function assignCoordinatorsToReservation($reservationId)
                 'assignment_id' => $assignment->id,
                 'service' => $service->name_en,
                 'coordinator' => $coordinator?->user?->name ?? 'غير محدد',
-                'status' => $assignment->status,
+                'notification' => $notification,
+                'status' => $assignment->status
             ];
         }
+        $reservation->status = 'working_in';
+        $reservation->save();
     }
 
     return response()->json([
         'status' => true,
         'message' => 'تم توزيع المهام على المنسقين بنجاح.',
         'assignments' => $assignments,
+        'notifications' => $notifications
     ]);
 }
 
@@ -171,10 +176,8 @@ public function show($id)
 public function getOrganizedIncompleteReservations()
 {
     try {
-        $reservations = Reservation::with(['tasks'])
-            ->whereHas('tasks', function ($query) {
-                $query->where('status', '==', 'working_in');
-            })
+        $reservations = Reservation::where('status', 'working_in')
+            ->with(['tasks'])
             ->get();
 
         return response()->json([
@@ -270,31 +273,32 @@ public function confirmReservationinhallowner($reservationId)
     $reservation->status = 'completed';
     $reservation->save();
 
-    // جلب المستخدم صاحب الحجز
+    // جلب المستخدم
     $user = $reservation->user;
 
     // رسالة الإشعار
     $title = 'تم تأكيد الحجز';
-    $body  = 'تم تأكيد حجزك رقم #' . $reservation->id . ' بنجاح.';
+    $body  = "تم تأكيد حجزك رقم #{$reservation->id} بنجاح.";
 
-    // إرسال الإشعار وحفظه في DB
-    NotificationHelper::sendFCM(
+    // إرسال الإشعار
+    $notification = NotificationHelper::sendFCM(
         $user,
-        'reservation_confirmed', // type
+        'reservation_confirmed',
         $title,
         $body,
         [
             'reservation_id' => $reservation->id,
             'notifiable_id' => $reservation->id,
-            'notifiable_type' => Reservation::class
+            'notifiable_type' => Reservation::class, 
         ]
     );
 
     return response()->json([
-        'status'  => true,
+        'status' => true,
         'message' => 'تم تأكيد الحجز وإرسال الإشعار بنجاح.',
-        'reservation' => $reservation
-    ]);
+        'reservation' => $reservation,
+        'notification' => $notification, // الآن data ستكون array مقروء
+    ], 200);
 }
 
 }
