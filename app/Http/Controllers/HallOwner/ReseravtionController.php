@@ -121,7 +121,11 @@ public function getReservationsForHallOwner()
 public function show($id)
 {
     try {
-        $reservation = Reservation::with(['user', 'hall', 'services'])->find($id);
+        $reservation = Reservation::with([
+            'user',
+            'hall',
+            'services.service'
+        ])->find($id);
 
         if (!$reservation) {
             return response()->json([
@@ -152,11 +156,13 @@ public function show($id)
                     'location_en' => $reservation->hall->location_en,
                     'price' => $reservation->hall->price,
                 ],
-                'services' => $reservation->services->map(function ($service) {
+                'services' => $reservation->services->map(function ($reservationService) {
                     return [
-                        'id' => $service->id,
-                        'name' => $service->name,
-                        'price' => $service->price,
+                        'id' => $reservationService->service->id ?? null,
+                        'name_ar' => $reservationService->service->name_ar ,
+                        'name_en' => $reservationService->service->name_en ,
+                        'quantity' => $reservationService->quantity,
+                        'unit_price' => $reservationService->unit_price,
                     ];
                 }),
             ]
@@ -172,6 +178,7 @@ public function show($id)
         ], 500);
     }
 }
+
 
 public function getOrganizedIncompleteReservations()
 {
@@ -196,19 +203,27 @@ public function getOrganizedIncompleteReservations()
 }
 public function getTasksByReservationAndStatus($reservationId, $status)
 {
-    $allowedStatuses = ['pending', 'accepted', 'rejected'];
+    // الحالات المسموح بها
+    $allowedStatuses = ['working_on', 'accepted', 'rejected', 'done'];
     if (!in_array($status, $allowedStatuses)) {
         return response()->json([
             'status' => false,
-            'message' => 'الحالة غير صالحة. يُسمح فقط: pending, accepted, rejected.'
+            'message' => 'الحالة غير صالحة. يُسمح فقط: working_on, accepted, rejected, done.'
         ], 422);
     }
 
     try {
-        $tasks = CoordinatorAssignment::with(['reservation', 'reservation.user', 'reservation.hall'])
-            ->where('status', $status)
-            ->where('reservation_id', $reservationId)
-            ->get();
+        $query = CoordinatorAssignment::with(['reservation', 'reservation.user', 'reservation.hall'])
+            ->where('reservation_id', $reservationId);
+
+        // إذا الحالة "done" رجّع accepted + rejected
+        if ($status === 'done') {
+            $query->whereIn('status', ['accepted', 'rejected']);
+        } else {
+            $query->where('status', $status);
+        }
+
+        $tasks = $query->get();
 
         if ($tasks->isEmpty()) {
             return response()->json([
@@ -231,6 +246,7 @@ public function getTasksByReservationAndStatus($reservationId, $status)
         ], 500);
     }
 }
+
 
 public function showTask($id)
 {

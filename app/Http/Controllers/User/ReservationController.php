@@ -186,7 +186,7 @@ public function confirmReservationinuser(Request $request)
         $reservation->save();
 
         // إرسال إشعار
-        $targetUser =  User::find($user->id);
+        $targetUser = $hall->owner;
         if ($targetUser) {
             NotificationHelper::sendFCM(
                 $targetUser,

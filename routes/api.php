@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\HallOwner\ReseravtionController;
 use App\Http\Controllers\User\HallController;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +16,7 @@ use App\Http\Controllers\HallOwner\ServiceController as HallOwnerServiceControll
 use App\Http\Controllers\HallOwner\CoordinatorController as HallOwnerCoordinatorController; 
 use App\Http\Controllers\coordinator\CoordinatorController;
 use Illuminate\Http\Request;
+
 
 
 Route::post('/register', [AuthController::class, 'register']); // done
@@ -93,13 +95,16 @@ Route::middleware('auth:sanctum')->group(function () {
 // =====================================================================================================
 // مسارات المدير العام (Admin) - تتطلب مصادقة ودور 'admin'
 // =====================================================================================================
-
-Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
-    Route::prefix('event-types')->group(function () {
-        Route::post('/', [EventTypeController::class, 'createEventType']);   // done 
-        Route::delete('/{id}', [EventTypeController::class, 'deleteEventType']); // done
-        Route::get('/', [EventTypeController::class, 'index']); // done 
+Route::prefix('event-types')->group(function () {
+    Route::post('/', [EventTypeController::class, 'createEventType']);   // done 
+    Route::delete('/{id}', [EventTypeController::class, 'deleteEventType']); // done
+    Route::get('/', [EventTypeController::class, 'index']); // done 
     });
+Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/dashboard/all-reservations', [DashboardController::class, 'getAllReservationsDetails']);
+    Route::get('/dashboard/daterange', [DashboardController::class, 'getEventsByDateRange']);
+    
 
     // إدارة مالكي الصالات بواسطة Admin
     Route::prefix('hall-owners')->group(function () {

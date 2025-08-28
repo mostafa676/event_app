@@ -18,7 +18,7 @@ return new class extends Migration
         $table->unsignedBigInteger('coordinator_id');
         $table->unsignedBigInteger('assigned_by');
     
-        $table->enum('status', ['pending', 'accepted', 'completed', 'rejected'])->default('pending');
+        $table->enum('status', ['working_on','accepted','rejected'])->default('working_on');
         $table->text('instructions')->nullable();
         $table->timestamp('completed_at')->nullable();
         $table->timestamps();

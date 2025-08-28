@@ -106,8 +106,7 @@ public function pendingAssignments()
 
 
 // nnn 4
-public function acceptAssignment($assignmentId)
-{
+public function acceptAssignment($assignmentId){
     $coordinator = Coordinator::where('user_id', Auth::id())->first();
 
     if (!$coordinator) {

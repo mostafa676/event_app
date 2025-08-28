@@ -37,9 +37,10 @@ class Reservation extends Model
     }
 
     public function services()
-    {
-        return $this->hasMany(ReservationService::class);
-    }
+{
+    return $this->hasMany(ReservationService::class, 'reservation_id')->with('service');
+}
+
 
 public function reservationServices()
 {

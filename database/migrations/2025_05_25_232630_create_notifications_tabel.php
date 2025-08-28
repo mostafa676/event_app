@@ -9,17 +9,27 @@ return new class extends Migration
     public function up(): void
 {
     Schema::create('notifications', function (Blueprint $table) {
-        $table->id();
+        $table->uuid('id')->primary();
+
+        // إذا users.id هو bigIncrements:
         $table->foreignId('user_id')->constrained()->onDelete('cascade');
-        $table->string('type');
-        $table->morphs('notifiable');
-        $table->string('title')->nullable(); // عنوان مختصر
-        $table->text('data'); // JSON
+        // إذا users.id هو uuid، استبدل السطر أعلاه بـ:
+        // $table->uuid('user_id');
+        // $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+
+        $table->string('type')->nullable();
+        // اجعل notifiable nullable وادعم uuid أو bigInt عن طريق جعله نص (أبسط وأعمّ حالاً)
+        $table->string('notifiable_id')->nullable();
+        $table->string('notifiable_type')->nullable();
+
+        $table->string('title')->nullable();
+        $table->json('data')->nullable();
         $table->timestamp('read_at')->nullable();
         $table->boolean('is_sent_to_firebase')->default(false);
         $table->timestamps();
     });
 }
+
 
 public function down(): void
 {
