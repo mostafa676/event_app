@@ -186,7 +186,8 @@ public function confirmReservationinuser(Request $request)
         $reservation->save();
 
         // إرسال إشعار
-        $targetUser = $hall->owner;
+        // $targetUser = $hall->owner;
+        $targetUser = $user;
         if ($targetUser) {
             NotificationHelper::sendFCM(
                 $targetUser,
@@ -216,7 +217,7 @@ public function confirmReservationinuser(Request $request)
             'message' => "تم تأكيد الحجز بنجاح. سيتم إرسال رسالة تأكيد عند انتهاء الطلب",
             'reservation' => $reservation,
             'notification' => $notificationData
-        ], 201); 
+        ], 200); 
 
     } catch (ValidationException $e) {
         return response()->json([
@@ -515,80 +516,81 @@ public function addFlowerDecoration(Request $request)
 
 
 public function getReservationSummary()
-    {
-        try {
-            $user = auth()->user();
-            $reservation = Reservation::with([
-                'hall',
-                'eventType',
-                'reservationServices.service',
-                'reservationServices.variant'
-            ])
-            ->where('user_id', $user->id)
-            ->where('status', 'pending')
-            ->first();
+{
+    try {
+        $user = auth()->user();
+        $reservation = Reservation::with([
+            'hall',
+            'eventType',
+            'reservationServices.service',
+            'reservationServices.variant'
+        ])
+        ->where('user_id', $user->id)
+        ->where('status', 'pending')
+        ->first();
 
-            if (!$reservation) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'لا يوجد حجز مؤقت حالياً.',
-                    'summary' => null,
-                ], 404);
-            }
-
-            $totalPrice = 0;
-            if ($reservation->hall) {
-                $totalPrice += $reservation->hall->price;
-            }
-
-            $servicesDetails = $reservation->reservationServices->map(function ($item) use (&$totalPrice) {
-                $itemTotalPrice = $item->quantity * $item->unit_price;
-                $totalPrice += $itemTotalPrice;
-                return [
-                    'id' => $item->id,
-                    'service_name_ar' => $item->service->name_ar ?? null,
-                    'service_name_en' => $item->service->name_en ?? null,
-                    'variant_name_ar' => $item->serviceVariant->name_ar ?? null,
-                    'variant_name_en' => $item->serviceVariant->name_en ?? null,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'total_item_price' => $itemTotalPrice,
-                ];
-            });
-
+        if (!$reservation) {
             return response()->json([
                 'status' => true,
                 'message' => 'تم جلب ملخص الحجز بنجاح.',
-                'summary' => [
-                    'reservation_id' => $reservation->id,
-                    'reservation_date' => $reservation->reservation_date,
-                    'start_time' => $reservation->start_time,
-                    'end_time' => $reservation->end_time,
-                    'hall' => $reservation->hall ? [
-                        'id' => $reservation->hall->id,
-                        'name_ar' => $reservation->hall->name_ar,
-                        'name_en' => $reservation->hall->name_en,
-                        'price' => $reservation->hall->price,
-                    ] : null,
-                    'event' => $reservation->event ? [
-                        'id' => $reservation->event->id,
-                        'name_ar' => $reservation->event->name_ar,
-                        'name_en' => $reservation->event->name_en,
-                    ] : null,
-                    'services' => $servicesDetails,
-                    'total_price' => $totalPrice,
-                ],
+                'summary' => 'لا يوجد حجز مؤقت حالياً.',
             ], 200);
-
-        } catch (\Exception $e) {
-            Log::error('Error in getReservationSummary: ' . $e->getMessage());
-            return response()->json([
-                'status' => false,
-                'message' => 'حدث خطأ أثناء جلب ملخص الحجز.',
-                'error' => $e->getMessage(),
-            ], 500);
         }
+
+        $totalPrice = 0;
+        if ($reservation->hall) {
+            $totalPrice += $reservation->hall->price;
+        }
+
+        $servicesDetails = $reservation->reservationServices->map(function ($item) use (&$totalPrice) {
+            $itemTotalPrice = $item->quantity * $item->unit_price;
+            $totalPrice += $itemTotalPrice;
+            return [
+                'id' => $item->id,
+                'service_name_ar' => $item->service->name_ar ?? null,
+                'service_name_en' => $item->service->name_en ?? null,
+                'variant_name_ar' => $item->serviceVariant->name_ar ?? null,
+                'variant_name_en' => $item->serviceVariant->name_en ?? null,
+                'quantity' => $item->quantity,
+                'unit_price' => $item->unit_price,
+                'total_item_price' => $itemTotalPrice,
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'message' => 'تم جلب ملخص الحجز بنجاح.',
+            'summary' => [
+                'reservation_id' => $reservation->id,
+                'reservation_date' => $reservation->reservation_date,
+                'start_time' => $reservation->start_time,
+                'end_time' => $reservation->end_time,
+                'hall' => $reservation->hall ? [
+                    'id' => $reservation->hall->id,
+                    'name_ar' => $reservation->hall->name_ar,
+                    'name_en' => $reservation->hall->name_en,
+                    'price' => $reservation->hall->price,
+                ] : null,
+                'event' => $reservation->event ? [
+                    'id' => $reservation->event->id,
+                    'name_ar' => $reservation->event->name_ar,
+                    'name_en' => $reservation->event->name_en,
+                ] : null,
+                'services' => $servicesDetails,
+                'total_price' => $totalPrice,
+            ],
+        ], 200);
+
+    } catch (\Exception $e) {
+        Log::error('Error in getReservationSummary: ' . $e->getMessage());
+        return response()->json([
+            'status' => false,
+            'message' => 'حدث خطأ أثناء جلب ملخص الحجز.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
 }
+
 
     // * متاح فقط للحجوزات المعلقة أو خلال 24 ساعة من الحجز.
 public function updateReservation(Request $request, $reservationId)

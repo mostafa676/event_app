@@ -41,13 +41,17 @@ class CoordinatorAssignment extends Model
     }
 
     // حالة المهمة
-    public function scopePending($query)
+    public function scopeworking_on($query)
     {
-        return $query->where('status', 'pending');
+        return $query->where('status', 'working_on');
     }
 
-    public function scopeCompleted($query)
+    public function scopeaccepted($query)
     {
-        return $query->where('status', 'completed');
+        return $query->where('status', 'accepted');
+    }
+    public function scoperejected($query)
+    {
+        return $query->where('status', 'rejected');
     }
 }

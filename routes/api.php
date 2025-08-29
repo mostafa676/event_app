@@ -95,16 +95,16 @@ Route::middleware('auth:sanctum')->group(function () {
 // =====================================================================================================
 // مسارات المدير العام (Admin) - تتطلب مصادقة ودور 'admin'
 // =====================================================================================================
-Route::prefix('event-types')->group(function () {
-    Route::post('/', [EventTypeController::class, 'createEventType']);   // done 
-    Route::delete('/{id}', [EventTypeController::class, 'deleteEventType']); // done
-    Route::get('/', [EventTypeController::class, 'index']); // done 
-    });
+
 Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/dashboard/all-reservations', [DashboardController::class, 'getAllReservationsDetails']);
     Route::get('/dashboard/daterange', [DashboardController::class, 'getEventsByDateRange']);
-    
+    Route::prefix('event-types')->group(function () {
+    Route::post('/', [EventTypeController::class, 'createEventType']);   // done 
+    Route::delete('/{id}', [EventTypeController::class, 'deleteEventType']); // done
+    Route::get('/', [EventTypeController::class, 'index']); // done 
+    });
 
     // إدارة مالكي الصالات بواسطة Admin
     Route::prefix('hall-owners')->group(function () {

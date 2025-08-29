@@ -11,6 +11,59 @@ USE App\Helpers\NotificationHelper;
 
 class ReseravtionController extends Controller
 {
+protected function reassignTask(CoordinatorAssignment $assignment)
+{
+    $service = $assignment->service;
+
+    // نبحث عن منسق آخر لنفس نوع الخدمة
+    $coordinatorType = CoordinatorType::where('name_en', $service->name_en)->first();
+    if (!$coordinatorType) return; // إذا لم يوجد نوع منسق، نتوقف
+
+    $newCoordinator = Coordinator::where('coordinator_type_id', $coordinatorType->id)
+        ->where('id', '!=', $assignment->coordinator_id) // استبعاد المنسق السابق
+        ->withCount(['assignments as tasks_count' => function ($q) {
+            $q->whereIn('status', ['working_on', 'accepted']);
+        }])
+        ->orderBy('tasks_count', 'asc')
+        ->first();
+
+    if ($newCoordinator) {
+        // إنشاء مهمة جديدة للمنسق الجديد
+        $newAssignment = CoordinatorAssignment::create([
+            'reservation_id' => $assignment->reservation_id,
+            'coordinator_id' => $newCoordinator->id,
+            'service_id' => $service->id,
+            'assigned_by' => Auth::id(),
+            'status' => 'working_on',
+        ]);
+
+        // إرسال إشعار للمنسق الجديد
+        NotificationHelper::sendFCM(
+            $newCoordinator->user,
+            'task_assigned',
+            'تم تعيين مهمة جديدة',
+            'تم تعيينك لخدمة: ' . $service->name_ar,
+            [
+                'assignment_id' => $newAssignment->id,
+                'reservation_id' => $assignment->reservation_id,
+                'notifiable_id' => $newAssignment->id,
+                'notifiable_type' => 'task_assigned'
+            ]
+        );
+    } else {
+        // إذا لم يوجد منسق متاح، يمكن إرسال إشعار للمالك أو تسجيل تنبيه
+        $reservationOwner = $assignment->reservation->user;
+        NotificationHelper::sendFCM(
+            $reservationOwner,
+            'service_unassigned',
+            'لا يوجد منسق متاح',
+            'الخدمة ' . $service->name_ar . ' لم يتم تعيين منسق لها بعد رفض المنسق السابق.',
+            [
+                'reservation_id' => $assignment->reservation_id,
+            ]
+        );
+    }
+}
 
 // nnn 1
 public function assignCoordinatorsToReservation($reservationId)
@@ -43,7 +96,7 @@ public function assignCoordinatorsToReservation($reservationId)
             // نجيب المنسق اللي عنده أقل عدد مهام
             $coordinator = Coordinator::where('coordinator_type_id', $coordinatorType->id)
                 ->withCount(['assignments as tasks_count' => function ($q) {
-                    $q->whereIn('status', ['pending', 'accepted']); // المهام النشطة فقط
+                    $q->whereIn('status', ['working_on', 'accepted']); // المهام النشطة فقط
                 }])
                 ->orderBy('tasks_count', 'asc')
                 ->first();
@@ -56,7 +109,7 @@ public function assignCoordinatorsToReservation($reservationId)
                 'reservation_service_id' => $reservationService->id,
                 'service_id' => $service->id,
                 'assigned_by' => Auth::id(),
-                'status' => 'pending',
+                'status' => 'working_on',
             ]);
 
             // إشعار للمنسق
@@ -77,7 +130,7 @@ public function assignCoordinatorsToReservation($reservationId)
                 'assignment_id' => $assignment->id,
                 'service' => $service->name_en,
                 'coordinator' => $coordinator?->user?->name ?? 'غير محدد',
-                'notification' => $notification,
+                'notification' => $notifications,
                 'status' => $assignment->status
             ];
         }
@@ -281,85 +334,132 @@ public function showTask($id)
 }
 
 // nnn 3
-public function confirmReservationinhallowner($reservationId)
-{
-    $reservation = Reservation::findOrFail($reservationId);
-
-    // تأكيد الحجز
-    $reservation->status = 'completed';
-    $reservation->save();
-
-    // جلب المستخدم
-    $user = $reservation->user;
-
-    // رسالة الإشعار
-    $title = 'تم تأكيد الحجز';
-    $body  = "تم تأكيد حجزك رقم #{$reservation->id} بنجاح.";
-
-    // إرسال الإشعار
-    $notification = NotificationHelper::sendFCM(
-        $user,
-        'reservation_confirmed',
-        $title,
-        $body,
-        [
-            'reservation_id' => $reservation->id,
-            'notifiable_id' => $reservation->id,
-            'notifiable_type' => Reservation::class, 
-        ]
-    );
-
-    return response()->json([
-        'status' => true,
-        'message' => 'تم تأكيد الحجز وإرسال الإشعار بنجاح.',
-        'reservation' => $reservation,
-        'notification' => $notification, // الآن data ستكون array مقروء
-    ], 200);
-}
-
-}
-
-// public function assignCoordinatorsToReservation($reservationId)
+// public function confirmReservationinhallowner($reservationId)
 // {
-//     $reservation = Reservation::with('services.service')->findOrFail($reservationId);
-//     $assignments = [];
-// $existingServiceIds=[] ;
-//     foreach ($reservation->services as $reservationService) {
-//         $service = $reservationService->service;
-//        if (in_array($service->id, $existingServiceIds)) {
-//     continue;
-// }
-// $existingServiceIds[] = $service->id;
-//         //(مثلاً DJ للطرب، Chef للطعام)
-//         $coordinatorType = CoordinatorType::where('name_en', $service->name_en)->first();
+//     $reservation = Reservation::with('coordinatorAssignments.service')->findOrFail($reservationId);
 
-//         if ($coordinatorType) {
-//             $coordinator = Coordinator::where('coordinator_type_id', $coordinatorType->id)->first();
-
-//             if ($coordinator) {
-//                 $assignment = CoordinatorAssignment::create([
-//     'reservation_id' => $reservation->id,
-//     'coordinator_id' => $coordinator->id,
-//     'reservation_service_id' => $reservationService->id,
-//     'service_id' => $service->id, // أضف هذا السطر
-//     'assigned_by' => Auth::id(),
-//     'status' => 'pending',
-// ]);
-
-                  
-//                 $assignments[] = [
-//                     'assignment_id' => $assignment->id,
-//                     'service' => $service->name_en,
-//                     'coordinator' => $coordinator?->user?->name ?? 'يا لهوووي  ',
-//                     'status' => $assignment->status,
-//                 ];
-//             }
+//     // أولًا: إعادة تعيين المهام المرفوضة أو الغير مكتملة
+//     foreach ($reservation->coordinatorAssignments as $assignment) {
+//         if (in_array($assignment->status, ['rejected', 'pending'])) {
+//             // استدعاء دالة إعادة التعيين لكل مهمة غير مكتملة
+//             $this->reassignTask($assignment);
 //         }
 //     }
 
+//     // تأكيد الحجز بعد التأكد من توزيع المهام
+//     $reservation->status = 'completed';
+//     $reservation->save();
+
+//     // جلب المستخدم لإرسال الإشعار
+//     $user = $reservation->user;
+
+//     $title = 'تم تأكيد الحجز';
+//     $body  = "تم تأكيد حجزك رقم #{$reservation->id} بنجاح.";
+
+//     $notification = NotificationHelper::sendFCM(
+//         $user,
+//         'reservation_confirmed',
+//         $title,
+//         $body,
+//         [
+//             'reservation_id' => $reservation->id,
+//             'notifiable_id' => $reservation->id,
+//             'notifiable_type' => Reservation::class,
+//         ]
+//     );
+
 //     return response()->json([
 //         'status' => true,
-//         'message' => 'تم توزيع المهام على المنسقين بنجاح.',
-//         'assignments' => $assignments,
-//     ]);
+//         'message' => 'تم تأكيد الحجز وإرسال الإشعار بنجاح.',
+//         'reservation' => $reservation,
+//         'notification' => $notification,
+//     ], 200);
 // }
+
+
+public function confirmReservationinhallowner($reservationId)
+{
+    $reservation = Reservation::with('coordinatorAssignments.coordinator.user', 'coordinatorAssignments.service')->findOrFail($reservationId);
+
+    $stats = [
+        'reassigned' => 0,
+        'accepted' => 0,
+        'reminded' => 0,
+    ];
+
+    foreach ($reservation->coordinatorAssignments as $assignment) {
+        switch ($assignment->status) {
+            case 'working_on':
+                // تذكير المنسق الحالي بقبول أو رفض المهمة
+                NotificationHelper::sendFCM(
+                    $assignment->coordinator->user,
+                    'task_pending',
+                    'هناك مهمة تحتاج قرارك',
+                    'يرجى قبول أو رفض المهمة الخاصة بالخدمة: ' . ($assignment->service?->name_en ?? 'غير محدد'),
+                    [
+                        'assignment_id' => $assignment->id,
+                        'reservation_id' => $reservation->id,
+                        'notifiable_type' => CoordinatorAssignment::class
+                    ]
+                );
+                $stats['reminded']++;
+                break;
+
+            case 'rejected':
+                // إعادة تعيين المهمة لمنسق آخر
+                $this->reassignTask($assignment);
+                $stats['reassigned']++;
+                break;
+
+            case 'accepted':
+                $stats['accepted']++;
+                break;
+        }
+    }
+
+    $totalAssignments = $reservation->coordinatorAssignments->count();
+
+    // التأكد إذا كل المهام مقبولة لتأكيد الحجز
+    if ($stats['accepted'] === $totalAssignments) {
+        $reservation->status = 'completed';
+        $reservation->save();
+
+        NotificationHelper::sendFCM(
+            $reservation->user,
+            'reservation_confirmed',
+            'تم تأكيد الحجز',
+            "تم تأكيد حجزك رقم #{$reservation->id} بنجاح.",
+            [
+                'reservation_id' => $reservation->id,
+                'notifiable_type' => Reservation::class
+            ]
+        );
+
+        $message = 'تم تأكيد الحجز وإرسال الإشعار بنجاح.';
+    } else {
+        // إشعار للمستخدم أن بعض المهام قيد المعالجة أو إعادة التعيين
+        NotificationHelper::sendFCM(
+            $reservation->user,
+            'coordinator_assigning',
+            'خدماتك قيد المعالجة',
+            'يتم تعيين منسق جديد لبعض خدماتك، يرجى الانتظار حتى قبول المهام.',
+            [
+                'reservation_id' => $reservation->id,
+                'notifiable_type' => Reservation::class
+            ]
+        );
+
+        $message = 'بعض المهام لم يتم قبولها بعد أو تم إعادة تعيينها، تم إرسال الإشعارات.';
+    }
+
+    return response()->json([
+        'status' => true,
+        'message' => $message,
+        'reservation' => $reservation,
+        'stats' => $stats,
+    ], 200);
+}
+
+
+
+}

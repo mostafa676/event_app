@@ -558,11 +558,17 @@ public function getFoodCategories()
     try {
         $hallOwnerId = auth()->id();
 
+        // $categories = ServiceCategory::whereHas('service.halls', function ($q) use ($hallOwnerId) {
+        //         $q->where('user_id', $hallOwnerId);
+        //     })
+        //     ->with(['types', 'variants'])
+        //     ->get();
         $categories = ServiceCategory::whereHas('service.halls', function ($q) use ($hallOwnerId) {
-                $q->where('user_id', $hallOwnerId);
-            })
-            ->with(['types', 'variants'])
-            ->get();
+        $q->where('user_id', $hallOwnerId);
+    })
+    ->with(['variants.types'])
+    ->get();
+
 
         return response()->json([
             'status' => true,

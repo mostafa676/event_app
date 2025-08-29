@@ -16,10 +16,11 @@ class ServiceCategory extends Model
         return $this->belongsTo(Service::class);
     }
 
-    public function types()
-    {
-        return $this->hasMany(ServiceType::class);
-    }
+//     public function types()
+// {
+//     return $this->hasMany(ServiceType::class, 'service_id'); 
+// }
+
 
 public function variants()
 {

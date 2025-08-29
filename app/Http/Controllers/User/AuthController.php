@@ -172,7 +172,7 @@ public function uploadImage(Request $request)
     {
         try {
             $request->validate([
-                'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+                'image' => 'required|image|mimes:jpeg,png,jpg|max:5120',
             ]);
             $user = auth()->user();
             if ($user->image) {

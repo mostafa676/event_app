@@ -12,10 +12,17 @@
 // {
 //     /**
 //      * إرسال إشعار عبر Firebase (مع حفظه في DB).
+//      *
+//      * @param \App\Models\User $user
+//      * @param string $type
+//      * @param string $title
+//      * @param string $body
+//      * @param array $data
+//      * @return \App\Models\Notification
 //      */
-//     public static function sendFCM($user, $type, $title, $body, array $data = [])
+//     public static function sendFCM($user, string $type, string $title, string $body, array $data = [])
 //     {
-//         // تجهيز البيانات للتخزين
+//         // البيانات المحفوظة في DB
 //         $dbData = array_merge([
 //             'title' => $title,
 //             'body'  => $body,
@@ -33,37 +40,41 @@
 
 //         $notification = Notification::create($notificationData);
 
-//         // إذا ما في fcm_token => رجع الإشعار فقط
+//         // إذا المستخدم ما عنده fcm_token => بس خزّن الإشعار
 //         if (empty($user->fcm_token)) {
 //             return $notification->fresh();
 //         }
 
 //         try {
-//             self::sendFCMv1($user, $title, $body, $data, $notification);
+//             self::sendFCMMessage($user->fcm_token, $title, $body, $type, $data, $notification->id);
 //             $notification->update(['is_sent_to_firebase' => true]);
 //         } catch (\Throwable $e) {
-//             Log::error('FCM send error: ' . $e->getMessage());
+//             Log::error('FCM send error', [
+//                 'user_id' => $user->id,
+//                 'message' => $e->getMessage(),
+//             ]);
 //         }
 
 //         return $notification->fresh();
 //     }
 
-//     private static function sendFCMv1($user, $title, $body, $data, $notification)
+//     /**
+//      * إرسال رسالة فعلية عبر Firebase.
+//      */
+//     private static function sendFCMMessage(string $token, string $title, string $body, string $type, array $data, int $notificationId): void
 //     {
-//         $serviceAccount = base_path(config('services.fcm.firebase_credentials'));
+//         $serviceAccount = storage_path('app/firebase-credentials.json');
 
-//         $factory = (new Factory)
-//             ->withServiceAccount($serviceAccount);
-
+//         $factory = (new Factory)->withServiceAccount($serviceAccount);
 //         $messaging = $factory->createMessaging();
 
-//         $message = CloudMessage::withTarget('token', $user->fcm_token)
+//         $message = CloudMessage::withTarget('token', $token)
 //             ->withNotification(FirebaseNotification::create($title, $body))
 //             ->withData(array_merge($data, [
-//                 'type' => $data['type'] ?? '',
+//                 'type' => $type,
 //                 'title' => $title,
 //                 'body' => $body,
-//                 'notification_id' => $notification->id,
+//                 'notification_id' => (string)$notificationId,
 //             ]));
 
 //         $messaging->send($message);
@@ -92,7 +103,7 @@ class NotificationHelper
      */
     public static function sendFCM($user, string $type, string $title, string $body, array $data = [])
     {
-        // البيانات المحفوظة في DB
+        // تجهيز بيانات التخزين
         $dbData = array_merge([
             'title' => $title,
             'body'  => $body,
@@ -110,13 +121,21 @@ class NotificationHelper
 
         $notification = Notification::create($notificationData);
 
-        // إذا المستخدم ما عنده fcm_token => بس خزّن الإشعار
+        // إذا المستخدم ما عنده fcm_token => فقط خزّن الإشعار
         if (empty($user->fcm_token)) {
             return $notification->fresh();
         }
 
         try {
-            self::sendFCMMessage($user->fcm_token, $title, $body, $type, $data, $notification->id);
+            self::sendFCMMessage(
+                $user->fcm_token,
+                $title,
+                $body,
+                $type,
+                $data,
+                $notification->id // UUID (string)
+            );
+
             $notification->update(['is_sent_to_firebase' => true]);
         } catch (\Throwable $e) {
             Log::error('FCM send error', [
@@ -131,8 +150,14 @@ class NotificationHelper
     /**
      * إرسال رسالة فعلية عبر Firebase.
      */
-    private static function sendFCMMessage(string $token, string $title, string $body, string $type, array $data, int $notificationId): void
-    {
+    private static function sendFCMMessage(
+        string $token,
+        string $title,
+        string $body,
+        string $type,
+        array $data,
+        string $notificationId // ✅ صار string بدل int
+    ): void {
         $serviceAccount = storage_path('app/firebase-credentials.json');
 
         $factory = (new Factory)->withServiceAccount($serviceAccount);
@@ -144,7 +169,7 @@ class NotificationHelper
                 'type' => $type,
                 'title' => $title,
                 'body' => $body,
-                'notification_id' => (string)$notificationId,
+                'notification_id' => $notificationId, // UUID كـ string
             ]));
 
         $messaging->send($message);

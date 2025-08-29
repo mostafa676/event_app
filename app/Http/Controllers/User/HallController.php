@@ -7,20 +7,16 @@ use App\Models\Coordinator;
 use App\Models\CustomSongRequest;
 use App\Models\DecorationType;
 use App\Models\Flower;
-use App\Models\FlowerPlacement;
 use App\Models\Hall;
 use App\Models\EventType;
 use App\Models\HallRating;
 use App\Models\PlaceType;
-use App\Models\Service;
 use App\Models\ServiceCategory;
 use App\Models\ServiceType;
 use App\Models\ServiceVariant;
 use App\Models\Song;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException; 
-
 class HallController extends Controller
 {
 
@@ -314,7 +310,7 @@ public function getPhotographers($hallOwnerId)
     try {
         $photographers = Coordinator::with('user', 'portfolios')
             ->where('hall_owner_id', $hallOwnerId)
-            ->whereHas('type', fn($q) => $q->where('name_en', 'PHOTOGRAFER'))
+            ->whereHas('type', fn($q) => $q->where('name_en', 'PHOTOGRAFERS'))
             ->get();
  if (!$photographers){
                 return response()->json([
